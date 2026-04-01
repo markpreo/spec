@@ -187,7 +187,7 @@ lil_radius = np.array([80, 70, 60, 50, 40, 30, 20, 10, 0, -10, -20, -30, -40, -5
 
 concat_imp_par_lil_rad = np.array([impact_param, lil_radius])
 
-selected_wave_len = [485.9375]
+selected_wave_len = [425.4331]
 
 data_directory_papka = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225'
 files = os.listdir(data_directory_papka)
@@ -242,27 +242,45 @@ for h in range(len(reshaped_cont_to_plot_T)):
 sort_resh_cont_to_plot_T = np.array(sort_resh_cont_to_plot_T)
 
 colors = [
-    '#0000FF',  # 1 - синий
-    '#4C4CFF',  # 2 - светло-синий
-    '#9B00FF',  # 3 - фиолетовый
-    '#FF00CC',  # 4 - розово-пурпурный
-    '#FF3366',  # 5 - красно-розовый
-    '#FF6600',  # 6 - оранжевый
-    '#0000FF',  # 7 - синий (цикл с новым оттенком)
-    '#6B6BFF',  # 8
-    '#B200FF',  # 9
-    '#FF33B3',  # 10
-    '#FF4D4D',  # 11
-    '#FF9933',  # 12
-    '#1F3CFF',  # 13
-    '#8844FF',  # 14
-    '#FF66AA'   # 15
+    '#0033CC',  # 1 - темно-синий (глубокий)
+    '#1F4CFF',  # 2 - насыщенный синий
+    '#3E6CFF',  # 3 - яркий синий
+    '#1F8CFF',  # 4 - сине-голубой
+    '#00A3CC',  # 5 - глубокий бирюзовый
+    '#00B87A',  # 6 - изумрудно-зеленый
+    '#00A350',  # 7 - темно-изумрудный
+    '#2E8B57',  # 8 - морская волна (насыщенный)
+    '#3C9E3C',  # 9 - глубокий зеленый
+    '#5CAD2C',  # 10 - зеленый с желтым оттенком
+    '#7CBC1C',  # 11 - оливково-зеленый
+    '#9CCB0C',  # 12 - желто-зеленый
+    '#CCCC00',  # 13 - глубокий желто-зеленый
+    '#E6B800',  # 14 - золотисто-желтый
+    '#FFCC00'   # 15 - глубокий желтый (золотой)
+]
+
+linestyles = [
+    'solid',    # 1
+    'dashed',   # 2
+    'dotted',   # 3
+    'solid',    # 4
+    'dashed',   # 5
+    'dotted',   # 6
+    'solid',    # 7
+    'dashed',   # 8
+    'dotted',   # 9
+    'solid',    # 10
+    'dashed',   # 11
+    'dotted',   # 12
+    'solid',    # 13
+    'dashed',   # 14
+    'dotted'    # 15
 ]
 
 plt.figure(2)
 plt.title('Континуум для ' + str(selected_wave_len) + ' по прицельному параметру')
 for i in range(len(sort_resh_cont_to_plot_T)):
-    plt.plot(x_impact_param, sort_resh_cont_to_plot_T[i], color=colors[i], label=str(x_time[i]))
+    plt.plot(x_impact_param, sort_resh_cont_to_plot_T[i], color=colors[i], linestyle=linestyles[i], label=str(x_time[i]))
 
 # for i in range(len(reshaped_cont_to_plot_T)):
 #     plt.plot(x_impact_param, reshaped_cont_to_plot_T[i], label=str(x_time[i]))
