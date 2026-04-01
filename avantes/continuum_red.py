@@ -1,0 +1,278 @@
+import avaread
+import matplotlib.pyplot as plt
+import os
+import numpy as np
+from numba.core.cgutils import sizeof
+from numba.cuda.kernels.transpose import transpose
+
+data_directory1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m40 62.STR8' # файл другого канала
+
+def getSpectrum(wave_need, file_path: str, base_width_of_peak, show: bool=False):
+
+    datas = avaread.read_file(file_path)
+    print(datas, 'data from file')
+
+    #n = 0
+    bkgs = []
+    bkgs.append(datas.scope.T[0])
+    bkgs.append(datas.scope.T[1])
+    bkgs.append(datas.scope.T[2])
+    n = len(bkgs)
+
+    bkgd = np.average(bkgs, axis=0)
+    errors = np.std(bkgs, axis=0)
+
+    bkgd_errors = errors / (n**0.5)
+    #считывание спектра из одного файла и вычет фона
+
+    np.set_printoptions(threshold=np.inf)
+    raw_spectrum = np.zeros_like(datas.scope.T[0])
+
+
+    time_from_data = 15
+
+    #peaks_time_order = {}
+
+    final_spectrum = []
+    peaks_to_plot = []
+    peaks_to_plot_by_shots = []
+    peak_one_shot = []
+    wave_len = datas.wavelength  # считываем длины волн
+    for time in range(time_from_data):
+                #raw_spectrum = datas.scope.T[time]  # считывание спектров
+                final_spectrum = datas.scope.T[time] - bkgd
+                #peaks_time_order[time] = {}
+
+                for wave_n in range(len(wave_need)):
+                    #peaks_time_order[time][wave_need[wave_n]] = {}
+                    search_wave = wave_need[wave_n]
+                    base_width_peak = base_width_of_peak[wave_n]
+                    nearest_points = nearest_dot_left_right(wave_len, final_spectrum, search_wave, base_width_peak)
+                    print(nearest_points, 'points')
+                    #peaks_time_order[time][wave_need[wave_n]] = res_nearest_dot_left_right
+                    if nearest_points:
+                        res_peak_area = peak_area(nearest_points, base_width_peak)
+                        #peaks_time_order[time][wave_need[wave_n]].append(res_peak_area)
+                        print(res_peak_area, 'res_peak_area')
+                        if not res_peak_area.size > 0:
+                            print('0')
+                            break
+                        peak_one_shot.append(res_peak_area) #в порядке массива wave_need
+                        print(peak_one_shot, 'peak_one_shot')
+
+                peaks_to_plot.append(peak_one_shot)
+                peak_one_shot = []
+                print(peaks_to_plot, 'peaks_to_plot')
+    peaks_to_plot_by_shots.append(peaks_to_plot)
+
+    return peaks_to_plot_by_shots
+
+
+def nearest_dot_left_right (wave_len, final_spectrum, wave_need, base_width_of_peak):
+    wave_need_left = min(wave_len, key=lambda x: abs(x - (wave_need - base_width_of_peak/2)))
+    wave_need_right = min(wave_len, key=lambda x: abs(x - (wave_need + base_width_of_peak/2)))
+
+    left_dot = np.where(wave_len == wave_need_left)[0][0]
+    right_dot = np.where(wave_len == wave_need_right)[0][0]
+    if (left_dot == 0) or (right_dot == 0):
+        return 0
+
+
+    res_intense_and_edge_points = [final_spectrum[left_dot:right_dot+1], wave_len[left_dot-1:right_dot+1]]
+    return  res_intense_and_edge_points #возвращает значения интенсивностей между точками на небольшом расстоянии (либо 1 значение если точки совпадают)
+    # сами длины волн и это расстояние
+
+
+def peak_area (res_inte_ed_p, base_width_of_peak):
+    res_peak_area = 0
+    area_width_by_colomn = []
+    for j in range(1, len(res_inte_ed_p[1])):
+        area_width_by_colomn.append(res_inte_ed_p[1][j] - res_inte_ed_p[1][j-1])
+
+
+
+    if len(res_inte_ed_p[0]) == len(area_width_by_colomn):
+        for i in range(len(res_inte_ed_p[0])):
+            res_peak_area += area_width_by_colomn[i] * res_inte_ed_p[0][i]
+            #print('res_peak_area += ', area_width_by_colomn[i], '*', res_inte_ed_p[0][i], '==', res_peak_area)
+
+
+    if res_peak_area == 0:
+        res_peak_area = base_width_of_peak * res_inte_ed_p[0][0] #если точка одна, умножаем базовую ширину пика на ее интенсивность
+        # print('res_peak_area += ', base_width_of_peak, '*', res_inte_ed_p[0][0], '==', res_peak_area)
+
+
+    return abs(res_peak_area)
+
+
+wave_need = np.array([584.35995, 551.66, 668.715, 675.2209, 733.813])
+base_width_of_peak = [0.4, 1., 1.2, 0.7, 1.3]
+peaks_to_plot_by_shots1 = getSpectrum(wave_need, data_directory1, base_width_of_peak, show=True)
+
+peaks_to_plot_by_shots = np.array(peaks_to_plot_by_shots1)
+
+con_585 = [584.35995]
+con_552 = [551.66]
+con_668 = [668.715]
+con_674 = [675.2209]
+con_733 = [733.813]
+
+wave_need = []
+wave_need.append(con_585)
+wave_need.append(con_552)
+wave_need.append(con_668)
+wave_need.append(con_674)
+wave_need.append(con_733)
+wave_need.append([])
+
+fig, axes = plt.subplots(2, 3, figsize=(10, 8))
+fig.suptitle('Possible continuum in diff. p. of the spectrum', fontsize=16)
+name_of_shot = data_directory1.split('\\')[-1]
+
+print(name_of_shot)
+peaks_to_plot_T = np.transpose(peaks_to_plot_by_shots)
+
+
+x_time = [i * 4 for i in range(len(peaks_to_plot_T[0]))]
+
+# Создаем словарь для удобного доступа к графикам
+plots = {
+    '584.35': axes[0, 0],
+    '551.66': axes[0, 1],
+    '668.72': axes[0, 2],
+    '675.22': axes[1, 0],
+    '733.81': axes[1, 1],
+    'empty': axes[1, 2]  # этот останется пустым
+}
+
+# cчетчик для peaks_to_plot_T
+peak_index = 0
+
+# перебираем группы длин волн
+for group_idx, (group_name, wave_group) in enumerate(zip(['584.35', '551.66', '668.72', '675.22', '733.81', 'empty'], wave_need)):
+    if group_name == 'empty' or len(wave_group) == 0:
+        continue
+
+    # Получаем соответствующий график
+    ax = plots[group_name]
+
+    # Для каждой длины волны в текущей группе
+    for wave in wave_group:
+        if peak_index < len(peaks_to_plot_T):
+            ax.plot(x_time, peaks_to_plot_T[peak_index],
+                    label=f'{wave} nm')
+            peak_index += 1
+        else:
+            break
+
+
+    # Настройки графика
+    ax.set_xlabel('Time, (ms.)', fontsize=12)
+    ax.set_ylabel('Intensity, (rel. u.)', fontsize=12)
+    ax.set_title(f'{group_name} - Intens. by time, shot # {name_of_shot}', fontsize=12)
+    ax.grid(True)
+    ax.legend(fontsize=8)
+
+# 6-й график пустой
+plots['empty'].set_title(f'Empty - shot # {name_of_shot}', fontsize=12)
+plots['empty'].grid(True)
+
+plt.tight_layout()
+plt.show()
+
+#читаем и вызываем функцию от других агрументов
+impact_param = np.array([79.97, 69.90, 59.80, 49.71, 39.64, 29.61, 19.65, 9.78, 0., -9.65, -19.17, -28.54
+                         , -37.75, -46.78, -55.62, -64.27, -72.72])
+lil_radius = np.array([80, 70, 60, 50, 40, 30, 20, 10, 0, -10, -20, -30, -40, -50, -60, -70, -80])
+
+concat_imp_par_lil_rad = np.array([impact_param, lil_radius])
+
+selected_wave_len = [485.9375]
+
+data_directory_papka = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225'
+files = os.listdir(data_directory_papka)
+
+print(files)
+cont_to_plot = []
+x_impact_param = []
+base_width_of_peak = [0.1]
+
+for file in files:
+    if int(file[4:6]) < 60:
+        print(int(file[4:6]))
+        idx: int
+        print(int(file[1:3]), file[0:1])
+        if (int(file[1:3]) in lil_radius)  and (file[0:1] == 'm'):
+            idx = np.argmax(concat_imp_par_lil_rad[1] == int('-'+file[1:3]))
+            print('-idx', idx, int('-'+file[1:3]))
+            x_impact_param.append(concat_imp_par_lil_rad[0][idx])
+        elif (int(file[1:3]) in lil_radius)  and (file[0:1] == 'p'):
+            idx = np.argmax(concat_imp_par_lil_rad[1] == int(file[1:3]))
+            print('+idx', idx, int('-'+file[1:3]))
+            x_impact_param.append(concat_imp_par_lil_rad[0][idx])
+        cont_to_plot.append(getSpectrum(selected_wave_len, r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\\'+ file, base_width_of_peak, show=True))
+
+print(cont_to_plot)
+cont_to_plot = np.array(cont_to_plot)
+print(x_impact_param)
+reshaped_cont_to_plot = []
+
+for j in range(len(cont_to_plot)):
+    flat = cont_to_plot[j].flatten()
+    reshaped_cont_to_plot.append(flat)
+
+reshaped_cont_to_plot = np.array(reshaped_cont_to_plot)
+reshaped_cont_to_plot_T = np.transpose(reshaped_cont_to_plot)
+
+#отсортируем прицельный параметр и конт ту плот в порядке возрастания.
+dict_to_sort_im_par = {}
+for l in range(len(x_impact_param)):
+    dict_to_sort_im_par[str(x_impact_param[l])] = l
+print(dict_to_sort_im_par)
+x_impact_param = sorted(x_impact_param)
+order = []
+for imp in (x_impact_param):
+    order.append(dict_to_sort_im_par[str(imp)])
+
+print(order) # в конце 2 раза одиновая цифра 80, поэтому получается 2 девятки
+sort_resh_cont_to_plot_T = []
+for h in range(len(reshaped_cont_to_plot_T)):
+    sort_resh_cont_to_plot_T.append(reshaped_cont_to_plot_T[h][order])
+
+sort_resh_cont_to_plot_T = np.array(sort_resh_cont_to_plot_T)
+
+colors = [
+    '#0000FF',  # 1 - синий
+    '#4C4CFF',  # 2 - светло-синий
+    '#9B00FF',  # 3 - фиолетовый
+    '#FF00CC',  # 4 - розово-пурпурный
+    '#FF3366',  # 5 - красно-розовый
+    '#FF6600',  # 6 - оранжевый
+    '#0000FF',  # 7 - синий (цикл с новым оттенком)
+    '#6B6BFF',  # 8
+    '#B200FF',  # 9
+    '#FF33B3',  # 10
+    '#FF4D4D',  # 11
+    '#FF9933',  # 12
+    '#1F3CFF',  # 13
+    '#8844FF',  # 14
+    '#FF66AA'   # 15
+]
+
+plt.figure(2)
+plt.title('Континуум для ' + str(selected_wave_len) + ' по прицельному параметру')
+for i in range(len(sort_resh_cont_to_plot_T)):
+    plt.plot(x_impact_param, sort_resh_cont_to_plot_T[i], color=colors[i], label=str(x_time[i]))
+
+# for i in range(len(reshaped_cont_to_plot_T)):
+#     plt.plot(x_impact_param, reshaped_cont_to_plot_T[i], label=str(x_time[i]))
+
+plt.xlabel('Impact parameter, mm')
+plt.ylabel('Intesity, rel. u.')
+plt.grid(True)
+
+plt.legend()
+plt.show()
+
+
+
