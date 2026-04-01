@@ -5,53 +5,35 @@ import numpy as np
 from numba.core.cgutils import sizeof
 from numba.cuda.kernels.transpose import transpose
 
+np.set_printoptions(threshold=np.inf)
 
-def getSpectrum(wave_need, file_path: str, base_width_of_peak, show: bool=False):
+def fillBkgs(data,count):
+    bkgs = []
+    for i in range(count):
+        bkgs.append(data.scope.T[i])
+    return bkgs
+
+
+def getSpectrum(wave_need, file_path: str, base_width_of_peak, show: bool=False, times: int=15):
 
     datas = avaread.read_file(file_path)
     print(datas, 'data from file')
 
-    #n = 0
-    bkgs = []
-    bkgs.append(datas.scope.T[0])
-    bkgs.append(datas.scope.T[1])
-    bkgs.append(datas.scope.T[2])
-    n = len(bkgs)
-
-    bkgd = np.average(bkgs, axis=0)
-    errors = np.std(bkgs, axis=0)
-
-    bkgd_errors = errors / (n**0.5)
     #считывание спектра из одного файла и вычет фона
 
-    np.set_printoptions(threshold=np.inf)
-    raw_spectrum = np.zeros_like(datas.scope.T[0])
-
-
-    time_from_data = 15
-
-    #peaks_time_order = {}
-
-    final_spectrum = []
-    peaks_to_plot = []
-    peaks_to_plot_by_shots = []
-    peak_one_shot = []
+    bkgs = fillBkgs(datas, 3)
+    bkgd = np.average(bkgs, axis=0)
     wave_len = datas.wavelength  # считываем длины волн
-    for time in range(time_from_data):
-                #raw_spectrum = datas.scope.T[time]  # считывание спектров
+    peaks_to_plot, peaks_to_plot_by_shots, peak_one_shot = [], [], []
+    for time in range(times):
                 final_spectrum = datas.scope.T[time] - bkgd
-                #peaks_time_order[time] = {}
 
                 for wave_n in range(len(wave_need)):
-                    #peaks_time_order[time][wave_need[wave_n]] = {}
-                    search_wave = wave_need[wave_n]
-                    base_width_peak = base_width_of_peak[wave_n]
+                    search_wave, base_width_peak = wave_need[wave_n], base_width_of_peak[wave_n]
                     nearest_points = nearest_dot_left_right(wave_len, final_spectrum, search_wave, base_width_peak)
                     print(nearest_points, 'points')
-                    #peaks_time_order[time][wave_need[wave_n]] = res_nearest_dot_left_right
                     if nearest_points:
                         res_peak_area = peak_area(nearest_points, base_width_peak)
-                        #peaks_time_order[time][wave_need[wave_n]].append(res_peak_area)
                         print(res_peak_area, 'res_peak_area')
                         if not res_peak_area.size > 0:
                             print('0')
@@ -88,18 +70,14 @@ def peak_area (res_inte_ed_p, base_width_of_peak):
     for j in range(1, len(res_inte_ed_p[1])):
         area_width_by_colomn.append(res_inte_ed_p[1][j] - res_inte_ed_p[1][j-1])
 
-
-
     if len(res_inte_ed_p[0]) == len(area_width_by_colomn):
         for i in range(len(res_inte_ed_p[0])):
             res_peak_area += area_width_by_colomn[i] * res_inte_ed_p[0][i]
             #print('res_peak_area += ', area_width_by_colomn[i], '*', res_inte_ed_p[0][i], '==', res_peak_area)
 
-
     if res_peak_area == 0:
         res_peak_area = base_width_of_peak * res_inte_ed_p[0][0] #если точка одна, умножаем базовую ширину пика на ее интенсивность
         # print('res_peak_area += ', base_width_of_peak, '*', res_inte_ed_p[0][0], '==', res_peak_area)
-
 
     return abs(res_peak_area)
 
