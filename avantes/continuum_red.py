@@ -154,7 +154,7 @@ def init_plots_continuum_empty():
 
         # Настройки графика
         ax.set_xlabel('Time, (ms.)', fontsize=12)
-        ax.set_ylabel('Intensity, (rel. u.)', fontsize=12)
+        ax.set_ylabel('Intensity, (a. u.)', fontsize=12)
         ax.set_title(f'{group_name} - Intens. by time, shot # {name_of_shot}', fontsize=12)
         ax.grid(True)
         ax.legend(fontsize=8)
@@ -186,7 +186,7 @@ def init_data_continuum_curr_line(selected_wave_len):
     base_width_of_peak = [0.1]
 
     for file in files:
-        if int(file[4:6]) >= 60:
+        if int(file[4:6]) >= 60: #Менять для разных длин волн! до 500 <60, от 550 >=60
             print(int(file[4:6]))
             idx: int
             print(int(file[1:3]), file[0:1])
@@ -237,7 +237,7 @@ def sort_impact_par(x_impact_param):
     return order, x_impact_param
 
 
-def init_plots_curr_line(selected_wave_len):
+def init_plots_curr_line(selected_wave_len, wave_name):
 
     sort_resh_cont_to_plot_T, x_impact_param = init_data_continuum_curr_line(selected_wave_len)
 
@@ -280,7 +280,7 @@ def init_plots_curr_line(selected_wave_len):
     x_time = [i * 4 for i in range(15)]
 
     plt.figure(2)
-    plt.title('Континуум для ' + str(selected_wave_len) + ' по прицельному параметру')
+    plt.title('Континуум для ' + wave_name + ' ' + str(selected_wave_len) + ' по прицельному параметру')
     for i in range(len(sort_resh_cont_to_plot_T)):
         plt.plot(x_impact_param, sort_resh_cont_to_plot_T[i], color=colors[i], linestyle=linestyles[i], label=str(x_time[i]+2))
 
@@ -288,7 +288,7 @@ def init_plots_curr_line(selected_wave_len):
     #     plt.plot(x_impact_param, reshaped_cont_to_plot_T[i], label=str(x_time[i]))
 
     plt.xlabel('Impact parameter, mm')
-    plt.ylabel('Intesity, rel. u.')
+    plt.ylabel('Intesity, a. u.')
     plt.grid(True)
 
     plt.legend()
@@ -296,22 +296,11 @@ def init_plots_curr_line(selected_wave_len):
 
 def main():
 
-    #init_plots_continuum_empty()
+    init_plots_continuum_empty()
 
-    # selected_wave_len = [425.4331]
-    # init_plots_curr_line(selected_wave_len)
-    # selected_wave_len = [568.125]
-    # init_plots_curr_line(selected_wave_len)
-    # selected_wave_len = [464.74]
-    # init_plots_curr_line(selected_wave_len)
-    # selected_wave_len = [434.74]
-    # init_plots_curr_line(selected_wave_len)
-
-    # selected_wave_len = [435.139]
-    # init_plots_curr_line(selected_wave_len)
-
-    selected_wave_len = [568.125]
-    init_plots_curr_line(selected_wave_len)
+    # selected_wave_len = [733.813]
+    # wave_name = 'no lines'
+    # init_plots_curr_line(selected_wave_len, wave_name)
 
 
 main()
