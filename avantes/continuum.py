@@ -81,36 +81,53 @@ def peak_area (res_inte_ed_p, base_width_of_peak):
 
     return abs(res_peak_area)
 
-def init_data_continuum_empty():
+def init_data_continuum_empty(data_directory1):
 
-    data_directory1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m40 62.STR8'  # файл другого канала
+    #data_directory1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m40 62.STR8'  # файл другого канала
 
-    wave_need = np.array([584.35995, 551.66, 668.715, 675.2209, 733.813])
-    base_width_of_peak = [0.4, 1., 1.2, 0.7, 1.3]
+    # wave_need = np.array([584.35995, 551.66, 668.715, 675.2209, 733.813])
+    # base_width_of_peak = [0.4, 1., 1.2, 0.7, 1.3]
+    wave_need = [464.28, 465.025, 657.8, 658.28, 464.916, 434.74, 435.139, 425.4331, 427.4806, 428.9733,
+                 568.125, 434.0625, 485.9375]
+    base_width_of_peak = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,]
 
     peaks_to_plot_by_shots1 = getSpectrum(wave_need, data_directory1, base_width_of_peak, show=True)
 
     peaks_to_plot_by_shots = np.array(peaks_to_plot_by_shots1)
 
-    con_585 = [584.35995]
-    con_552 = [551.66]
-    con_668 = [668.715]
-    con_674 = [675.2209]
-    con_733 = [733.813]
+    wave_label_C = [464.28, 465.025, 657.8, 658.28]
+    wave_label_O = [464.916, 434.74, 435.139]
+    wave_label_Cr = [425.4331, 427.4806, 428.9733]
+    wave_label_N = [568.125]
+    wave_label_D = [434.0625, 485.9375]
 
     wave_need = []
-    wave_need.append(con_585)
-    wave_need.append(con_552)
-    wave_need.append(con_668)
-    wave_need.append(con_674)
-    wave_need.append(con_733)
+    wave_need.append(wave_label_C)
+    wave_need.append(wave_label_O)
+    wave_need.append(wave_label_Cr)
+    wave_need.append(wave_label_N)
+    wave_need.append(wave_label_D)
     wave_need.append([])
-    return wave_need, peaks_to_plot_by_shots, data_directory1
+
+    # con_585 = [584.35995]
+    # con_552 = [551.66]
+    # con_668 = [668.715]
+    # con_674 = [675.2209]
+    # con_733 = [733.813]
+    #
+    # wave_need = []
+    # wave_need.append(con_585)
+    # wave_need.append(con_552)
+    # wave_need.append(con_668)
+    # wave_need.append(con_674)
+    # wave_need.append(con_733)
+    # wave_need.append([])
+    return wave_need, peaks_to_plot_by_shots
 
 
-def init_plots_continuum_empty():
+def init_plots_continuum_empty(data_directory1):
 
-    wave_need, peaks_to_plot_by_shots, data_directory1 = init_data_continuum_empty()
+    wave_need, peaks_to_plot_by_shots = init_data_continuum_empty(data_directory1)
 
     fig, axes = plt.subplots(2, 3, figsize=(10, 8))
     fig.suptitle('Possible continuum in diff. p. of the spectrum', fontsize=16)
@@ -123,48 +140,96 @@ def init_plots_continuum_empty():
 
     # Создаем словарь для удобного доступа к графикам
     plots = {
-        '584.35': axes[0, 0],
-        '551.66': axes[0, 1],
-        '668.72': axes[0, 2],
-        '675.22': axes[1, 0],
-        '733.81': axes[1, 1],
+        'C': axes[0, 0],
+        'O': axes[0, 1],
+        'Cr': axes[0, 2],
+        'N': axes[1, 0],
+        'D': axes[1, 1],
         'empty': axes[1, 2]  # этот останется пустым
     }
 
+    # fig1, axes1 = plt.subplots(2, 3, figsize=(10, 8))
+    # fig1.suptitle('Possible continuum in diff. p. of the spectrum', fontsize=16)
+    #
+    # plots1 = {
+    #     'C': axes1[0, 0],
+    #     'O': axes1[0, 1],
+    #     'Cr': axes1[0, 2],
+    #     'N': axes1[1, 0],
+    #     'D': axes1[1, 1],
+    #     'empty': axes1[1, 2]  # этот останется пустым
+    # }
+
+
     # cчетчик для peaks_to_plot_T
     peak_index = 0
-
+    # peak_index1 = 0
     # перебираем группы длин волн
-    for group_idx, (group_name, wave_group) in enumerate(zip(['584.35', '551.66', '668.72', '675.22', '733.81', 'empty'], wave_need)):
+    for group_idx, (group_name, wave_group) in enumerate(zip(['C', 'O', 'Cr', 'N', 'D', 'empty'], wave_need)):
         if group_name == 'empty' or len(wave_group) == 0:
             continue
 
         # Получаем соответствующий график
         ax = plots[group_name]
 
+
         # Для каждой длины волны в текущей группе
         for wave in wave_group:
-            if peak_index < len(peaks_to_plot_T):
-                ax.plot(x_time, peaks_to_plot_T[peak_index],
-                        label=f'{wave} nm')
-                peak_index += 1
+            if wave >= 500:
+                if peak_index < len(peaks_to_plot_T):
+                    ax.plot(x_time, peaks_to_plot_T[peak_index],
+                            label=f'{wave} nm')
+                    peak_index += 1
+                else:
+                    break
             else:
-                break
+                if peak_index < len(peaks_to_plot_T):
+                    peak_index += 1
+                else:
+                    break
 
-
-        # Настройки графика
         ax.set_xlabel('Time, (ms.)', fontsize=12)
         ax.set_ylabel('Intensity, (a. u.)', fontsize=12)
         ax.set_title(f'{group_name} - Intens. by time, shot # {name_of_shot}', fontsize=12)
         ax.grid(True)
         ax.legend(fontsize=8)
 
+        # не работает!!!!!
+
+        # ax1 = plots1[group_name]
+        #
+        # for wave in wave_group:
+        #     if wave >= 550:
+        #         if peak_index1 < len(peaks_to_plot_T):
+        #             ax1.plot(x_time, peaks_to_plot_T[peak_index1],
+        #                     label=f'{wave} nm')
+        #             peak_index1 += 1
+        #         else:
+        #             break
+        #     else:
+        #         if peak_index1 < len(peaks_to_plot_T):
+        #             continue
+        #         else:
+        #             break
+        #
+        #
+        # # Настройки графика
+        # ax1.set_xlabel('Time, (ms.)', fontsize=12)
+        # ax1.set_ylabel('Intensity, (a. u.)', fontsize=12)
+        # ax1.set_title(f'{group_name} - Intens. by time, shot # {name_of_shot}', fontsize=12)
+        # ax1.grid(True)
+        # ax1.legend(fontsize=8)
+
     # 6-й график пустой
     plots['empty'].set_title(f'Empty - shot # {name_of_shot}', fontsize=12)
     plots['empty'].grid(True)
 
+    # plots1['empty'].set_title(f'Empty - shot # {name_of_shot}', fontsize=12)
+    # plots1['empty'].grid(True)
+
     plt.tight_layout()
     plt.show()
+
 
 
 def init_data_continuum_curr_line(selected_wave_len):
@@ -296,11 +361,31 @@ def init_plots_curr_line(selected_wave_len, wave_name):
 
 def main():
 
-    init_plots_continuum_empty()
+    # data_directory = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 20.STR8'
+    # init_plots_continuum_empty(data_directory)
+    # data_directory1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 22.STR8'
+    # init_plots_continuum_empty(data_directory1)
+    # data_directory2 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 33.STR8'
+    # init_plots_continuum_empty(data_directory2)
+    # data_directory3 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 35.STR8'
+    # init_plots_continuum_empty(data_directory3)
+    # data_directory5 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 36.STR8'
+    # init_plots_continuum_empty(data_directory5)
+    # data_directory6 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 37.STR8'
+    # init_plots_continuum_empty(data_directory6)
+    # data_directory7 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 38.STR8'
+    # init_plots_continuum_empty(data_directory7)
+    # data_directory8 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 39.STR8'
+    # init_plots_continuum_empty(data_directory8)
+    # data_directory9 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 40.STR8'
+    # init_plots_continuum_empty(data_directory9)
+    # data_directory10 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 41.STR8'
+    # init_plots_continuum_empty(data_directory10)
 
-    # selected_wave_len = [733.813]
-    # wave_name = 'no lines'
-    # init_plots_curr_line(selected_wave_len, wave_name)
+
+    selected_wave_len = [568.125]
+    wave_name = 'N II'
+    init_plots_curr_line(selected_wave_len, wave_name)
 
 
 main()

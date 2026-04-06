@@ -4,8 +4,10 @@ import os
 import numpy as np
 
 
-data_directory = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 41.STR8' #поставить сюда файл одного каналана
-data_directory1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 64.STR8' # файл другого канала
+data_directory = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m80 56.STR8' #поставить сюда файл одного каналана
+data_directory1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m80 60.STR8' # файл другого канала
+
+
 
 def getSpectrum(wave_need, file_path: str, show: bool=False):
 
@@ -156,7 +158,7 @@ for group_idx, (group_name, wave_group) in enumerate(zip(['C', 'O', 'Cr', 'N', '
 
     # Настройки графика
     ax.set_xlabel('Time, (ms.)', fontsize=12)
-    ax.set_ylabel('Intensity, (rel. u.)', fontsize=12)
+    ax.set_ylabel('Intensity, (a. u.)', fontsize=12)
     ax.set_title(f'{group_name} - Intens. by time, shot # {name_of_shot}', fontsize=12)
     ax.grid(True)
     ax.legend(fontsize=8)
