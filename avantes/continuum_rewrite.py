@@ -7,10 +7,10 @@ from numba.cuda.kernels.transpose import transpose
 
 np.set_printoptions(threshold=np.inf)
 
-def fillBkgs(data,count):
+def fillBkgs(datas, low_signal_times):
     bkgs = []
-    for i in range(count):
-        bkgs.append(data.scope.T[i])
+    for i in range(low_signal_times):
+        bkgs.append(datas.scope.T[i])
     return bkgs
 
 
@@ -18,13 +18,21 @@ def getSpectrum(wave_need, file_path: str, base_width_of_peak, show: bool=False,
 
     datas = avaread.read_file(file_path)
     print(datas, 'data from file')
+    low_signal_times = 3
 
-    #считывание спектра из одного файла и вычет фона
+    #считаем фон
 
-    bkgs = fillBkgs(datas, 3)
+    bkgs = fillBkgs(datas, low_signal_times)
     bkgd = np.average(bkgs, axis=0)
     wave_len = datas.wavelength  # считываем длины волн
-    peaks_to_plot, peaks_to_plot_by_shots, peak_one_shot = [], [], []
+    peaks_to_plot, peaks_to_plot_by_time, peaks_to_plot_one_time = [], [], []
+
+    # оргвнизовываем считанные пики с формате
+    # если файл один, то получаем что peak_one_shot лишнее
+    # [[[peak_one_shot], [peak_one_shot], [peak_one_shot]],
+    # [[peak_one_shot], [peak_one_shot], [peak_one_shot]],
+    # [[peak_one_shot], [peak_one_shot], [peak_one_shot]]]
+
     for time in range(times):
                 final_spectrum = datas.scope.T[time] - bkgd
 
@@ -38,15 +46,15 @@ def getSpectrum(wave_need, file_path: str, base_width_of_peak, show: bool=False,
                         if not res_peak_area.size > 0:
                             print('0')
                             break
-                        peak_one_shot.append(res_peak_area) #в порядке массива wave_need
-                        print(peak_one_shot, 'peak_one_shot')
-
-                peaks_to_plot.append(peak_one_shot)
-                peak_one_shot = []
+                        peaks_to_plot_one_time.append(res_peak_area)#в порядке массива wave_need
+                    else:
+                        peaks_to_plot_one_time.append(0)
+                peaks_to_plot.append(peaks_to_plot_one_time)
+                peaks_to_plot_one_time = []
                 print(peaks_to_plot, 'peaks_to_plot')
-    peaks_to_plot_by_shots.append(peaks_to_plot)
+    peaks_to_plot_by_time.append(peaks_to_plot)
 
-    return peaks_to_plot_by_shots
+    return peaks_to_plot_by_time
 
 
 def nearest_dot_left_right (wave_len, final_spectrum, wave_need, base_width_of_peak):
@@ -81,7 +89,7 @@ def peak_area (res_inte_ed_p, base_width_of_peak):
 
     return abs(res_peak_area)
 
-def init_data_continuum_empty(data_directory1):
+def init_data_continuum_empty(data_directory1, data_directory2 = 0):
 
     #data_directory1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m40 62.STR8'  # файл другого канала
 
@@ -92,8 +100,14 @@ def init_data_continuum_empty(data_directory1):
     base_width_of_peak = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,]
 
     peaks_to_plot_by_shots1 = getSpectrum(wave_need, data_directory1, base_width_of_peak, show=True)
+    peaks_to_plot_by_shots = list
 
-    peaks_to_plot_by_shots = np.array(peaks_to_plot_by_shots1)
+    if data_directory2 != 0:
+        peaks_to_plot_by_shots2 = getSpectrum(wave_need, data_directory2, base_width_of_peak, show=True)
+
+        peaks_to_plot_by_shots = np.array(peaks_to_plot_by_shots1) + np.array(peaks_to_plot_by_shots2)
+    else:
+        peaks_to_plot_by_shots = np.array(peaks_to_plot_by_shots1)
 
     wave_label_C = [464.28, 465.025, 657.8, 658.28]
     wave_label_O = [464.916, 434.74, 435.139]
@@ -125,13 +139,16 @@ def init_data_continuum_empty(data_directory1):
     return wave_need, peaks_to_plot_by_shots
 
 
-def init_plots_continuum_empty(data_directory1):
+def init_plots_continuum_empty(data_directory1, data_directory2 = 0):
 
-    wave_need, peaks_to_plot_by_shots = init_data_continuum_empty(data_directory1)
+    wave_need, peaks_to_plot_by_shots = init_data_continuum_empty(data_directory1, data_directory2)
 
     fig, axes = plt.subplots(2, 3, figsize=(10, 8))
     fig.suptitle('Possible continuum in diff. p. of the spectrum', fontsize=16)
-    name_of_shot = data_directory1.split('\\')[-1]
+    if data_directory2 != 0:
+        name_of_shot = data_directory1.split('\\')[-1] + ' and ' + data_directory2.split('\\')[-1]
+    else:
+        name_of_shot = data_directory1.split('\\')[-1]
 
     print(name_of_shot)
     peaks_to_plot_T = np.transpose(peaks_to_plot_by_shots)
@@ -148,18 +165,6 @@ def init_plots_continuum_empty(data_directory1):
         'empty': axes[1, 2]  # этот останется пустым
     }
 
-    # fig1, axes1 = plt.subplots(2, 3, figsize=(10, 8))
-    # fig1.suptitle('Possible continuum in diff. p. of the spectrum', fontsize=16)
-    #
-    # plots1 = {
-    #     'C': axes1[0, 0],
-    #     'O': axes1[0, 1],
-    #     'Cr': axes1[0, 2],
-    #     'N': axes1[1, 0],
-    #     'D': axes1[1, 1],
-    #     'empty': axes1[1, 2]  # этот останется пустым
-    # }
-
 
     # cчетчик для peaks_to_plot_T
     peak_index = 0
@@ -175,15 +180,9 @@ def init_plots_continuum_empty(data_directory1):
 
         # Для каждой длины волны в текущей группе
         for wave in wave_group:
-            if wave >= 500:
                 if peak_index < len(peaks_to_plot_T):
                     ax.plot(x_time, peaks_to_plot_T[peak_index],
                             label=f'{wave} nm')
-                    peak_index += 1
-                else:
-                    break
-            else:
-                if peak_index < len(peaks_to_plot_T):
                     peak_index += 1
                 else:
                     break
@@ -251,7 +250,7 @@ def init_data_continuum_curr_line(selected_wave_len):
     base_width_of_peak = [0.1]
 
     for file in files:
-        if int(file[4:6]) >= 60: #Менять для разных длин волн! до 500 <60, от 550 >=60
+        if int(file[4:6]) < 60: #Менять для разных длин волн! до 500 <60, от 550 >=60
             print(int(file[4:6]))
             idx: int
             print(int(file[1:3]), file[0:1])
@@ -345,15 +344,14 @@ def init_plots_curr_line(selected_wave_len, wave_name):
     x_time = [i * 4 for i in range(15)]
 
     plt.figure(2)
-    plt.title(str(wave_name) + ' ' + str(selected_wave_len))
+    plt.title('Континуум для ' + wave_name + ' ' + str(selected_wave_len) + ' по прицельному параметру')
     for i in range(len(sort_resh_cont_to_plot_T)):
-        plt.plot(x_impact_param, sort_resh_cont_to_plot_T[i], color=colors[i], linestyle=linestyles[i],
-                 marker='o', markersize=4, label=str(x_time[i]+2)+' ms')
+        plt.plot(x_impact_param, sort_resh_cont_to_plot_T[i], color=colors[i], linestyle=linestyles[i], label=str(x_time[i]+2))
 
     # for i in range(len(reshaped_cont_to_plot_T)):
     #     plt.plot(x_impact_param, reshaped_cont_to_plot_T[i], label=str(x_time[i]))
 
-    plt.xlabel('r, mm')
+    plt.xlabel('Impact parameter, mm')
     plt.ylabel('Intesity, a. u.')
     plt.grid(True)
 
@@ -380,13 +378,14 @@ def main():
     # init_plots_continuum_empty(data_directory8)
     # data_directory9 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 40.STR8'
     # init_plots_continuum_empty(data_directory9)
-    # data_directory10 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 41.STR8'
-    # init_plots_continuum_empty(data_directory10)
+    data_directory10 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m60 54.STR8'
+    data_directory11 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m60 61.STR8'
+    init_plots_continuum_empty(data_directory10, data_directory11)
 
 
-    selected_wave_len = [568.125]
-    wave_name = 'N II'
-    init_plots_curr_line(selected_wave_len, wave_name)
+    # selected_wave_len = [568.125]
+    # wave_name = 'N II'
+    # init_plots_curr_line(selected_wave_len, wave_name)
 
 
 main()
