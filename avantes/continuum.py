@@ -140,11 +140,11 @@ def init_plots_continuum_empty(data_directory1):
 
     # Создаем словарь для удобного доступа к графикам
     plots = {
-        'C': axes[0, 0],
-        'O': axes[0, 1],
-        'Cr': axes[0, 2],
-        'N': axes[1, 0],
-        'D': axes[1, 1],
+        'Carbon': axes[0, 0],
+        'Oxygen': axes[0, 1],
+        'Cromium': axes[0, 2],
+        'Nytrogen': axes[1, 0],
+        'Deuterium': axes[1, 1],
         'empty': axes[1, 2]  # этот останется пустым
     }
 
@@ -160,12 +160,14 @@ def init_plots_continuum_empty(data_directory1):
     #     'empty': axes1[1, 2]  # этот останется пустым
     # }
 
+    name_of_ion = ['II', 'II', 'III', 'III', 'II', 'II', 'I', 'I', 'I', 'II', 'beta', 'gamma']
+    grp_nm = ['C', 'C', 'C', 'C', 'O', 'O', 'Cr', 'Cr', 'Cr', 'N', 'D', 'D']
 
     # cчетчик для peaks_to_plot_T
     peak_index = 0
     # peak_index1 = 0
     # перебираем группы длин волн
-    for group_idx, (group_name, wave_group) in enumerate(zip(['C', 'O', 'Cr', 'N', 'D', 'empty'], wave_need)):
+    for group_idx, (group_name, wave_group) in enumerate(zip(['Carbon', 'Oxygen', 'Cromium', 'Nytrogen', 'Deuterium', 'empty'], wave_need)):
         if group_name == 'empty' or len(wave_group) == 0:
             continue
 
@@ -174,23 +176,28 @@ def init_plots_continuum_empty(data_directory1):
 
 
         # Для каждой длины волны в текущей группе
+        wave_legend_count = 0
         for wave in wave_group:
             if wave >= 500:
                 if peak_index < len(peaks_to_plot_T):
                     ax.plot(x_time, peaks_to_plot_T[peak_index],
-                            label=f'{wave} nm')
+                            label=f'{wave} nm ' + grp_nm[wave_legend_count] + ' ' + name_of_ion[wave_legend_count])
                     peak_index += 1
-                else:
-                    break
-            else:
-                if peak_index < len(peaks_to_plot_T):
-                    peak_index += 1
+                    wave_legend_count += 1
                 else:
                     break
 
-        ax.set_xlabel('Time, (ms.)', fontsize=12)
+            else:
+                if peak_index < len(peaks_to_plot_T):
+                    peak_index += 1
+                    wave_legend_count += 1
+                else:
+                    break
+            # wave_legend_count += 1
+
+        ax.set_xlabel('Time, (ms)', fontsize=12)
         ax.set_ylabel('Intensity, (a. u.)', fontsize=12)
-        ax.set_title(f'{group_name} - Intens. by time, shot # {name_of_shot}', fontsize=12)
+        ax.set_title(f'{group_name} - Intens. by time', fontsize=12)
         ax.grid(True)
         ax.legend(fontsize=8)
 
@@ -380,13 +387,13 @@ def main():
     # init_plots_continuum_empty(data_directory8)
     # data_directory9 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 40.STR8'
     # init_plots_continuum_empty(data_directory9)
-    # data_directory10 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 41.STR8'
-    # init_plots_continuum_empty(data_directory10)
+    data_directory10 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 41.STR8'
+    init_plots_continuum_empty(data_directory10)
 
 
-    selected_wave_len = [568.125]
-    wave_name = 'N II'
-    init_plots_curr_line(selected_wave_len, wave_name)
+    # selected_wave_len = [568.125]
+    # wave_name = 'N II'
+    # init_plots_curr_line(selected_wave_len, wave_name)
 
 
 main()

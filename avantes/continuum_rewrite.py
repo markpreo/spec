@@ -96,8 +96,8 @@ def init_data_continuum_empty(data_directory1, data_directory2 = 0):
     # wave_need = np.array([584.35995, 551.66, 668.715, 675.2209, 733.813])
     # base_width_of_peak = [0.4, 1., 1.2, 0.7, 1.3]
     wave_need = [464.28, 465.025, 657.8, 658.28, 464.916, 434.74, 435.139, 425.4331, 427.4806, 428.9733,
-                 568.125, 434.0625, 485.9375]
-    base_width_of_peak = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,]
+                 568.125, 434.0625, 485.9375, 551.66, 584.35995, 675.2209]
+    base_width_of_peak = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 1., 0.4, 0.7]
 
     peaks_to_plot_by_shots1 = getSpectrum(wave_need, data_directory1, base_width_of_peak, show=True)
     peaks_to_plot_by_shots = list
@@ -114,6 +114,7 @@ def init_data_continuum_empty(data_directory1, data_directory2 = 0):
     wave_label_Cr = [425.4331, 427.4806, 428.9733]
     wave_label_N = [568.125]
     wave_label_D = [434.0625, 485.9375]
+    wave_label_cont = [551.66, 584.35995, 675.2209]
 
     wave_need = []
     wave_need.append(wave_label_C)
@@ -121,7 +122,7 @@ def init_data_continuum_empty(data_directory1, data_directory2 = 0):
     wave_need.append(wave_label_Cr)
     wave_need.append(wave_label_N)
     wave_need.append(wave_label_D)
-    wave_need.append([])
+    wave_need.append(wave_label_cont)
 
     # con_585 = [584.35995]
     # con_552 = [551.66]
@@ -144,7 +145,7 @@ def init_plots_continuum_empty(data_directory1, data_directory2 = 0):
     wave_need, peaks_to_plot_by_shots = init_data_continuum_empty(data_directory1, data_directory2)
 
     fig, axes = plt.subplots(2, 3, figsize=(10, 8))
-    fig.suptitle('Possible continuum in diff. p. of the spectrum', fontsize=16)
+    fig.suptitle('Lines intensity', fontsize=16)
     if data_directory2 != 0:
         name_of_shot = data_directory1.split('\\')[-1] + ' and ' + data_directory2.split('\\')[-1]
     else:
@@ -157,71 +158,53 @@ def init_plots_continuum_empty(data_directory1, data_directory2 = 0):
 
     # Создаем словарь для удобного доступа к графикам
     plots = {
-        'C': axes[0, 0],
-        'O': axes[0, 1],
-        'Cr': axes[0, 2],
-        'N': axes[1, 0],
-        'D': axes[1, 1],
-        'empty': axes[1, 2]  # этот останется пустым
+        'Carbon': axes[0, 0],
+        'Oxygen': axes[0, 1],
+        'Cromium': axes[0, 2],
+        'Nytrogen': axes[1, 0],
+        'Deuterium': axes[1, 1],
+        'Continuum': axes[1, 2]  # этот останется пустым
     }
 
+    name_of_ion = ['II', 'II', 'III', 'III', 'II', 'II', 'II', 'I', 'I', 'I', 'II', '$\\gamma$', '$\\beta$', '', '', '']
+    grp_nm = ['C', 'C', 'C', 'C', 'O', 'O', 'O', 'Cr', 'Cr', 'Cr', 'N', 'D', 'D', '', '', '']
 
     # cчетчик для peaks_to_plot_T
     peak_index = 0
     # peak_index1 = 0
     # перебираем группы длин волн
-    for group_idx, (group_name, wave_group) in enumerate(zip(['C', 'O', 'Cr', 'N', 'D', 'empty'], wave_need)):
-        if group_name == 'empty' or len(wave_group) == 0:
-            continue
+    wave_legend_count = 0
+    for group_idx, (group_name, wave_group) in enumerate(zip(['Carbon', 'Oxygen', 'Cromium', 'Nytrogen', 'Deuterium', 'Continuum'], wave_need)):
+        # if group_name == 'empty' or len(wave_group) == 0:
+        #     continue
 
         # Получаем соответствующий график
         ax = plots[group_name]
 
 
+
         # Для каждой длины волны в текущей группе
+
         for wave in wave_group:
                 if peak_index < len(peaks_to_plot_T):
                     ax.plot(x_time, peaks_to_plot_T[peak_index],
-                            label=f'{wave} nm')
+                            label=grp_nm[wave_legend_count] + ' ' + name_of_ion[wave_legend_count] + ' ' + f'{wave} nm ')
                     peak_index += 1
+                    print(wave_legend_count)
                 else:
                     break
+                wave_legend_count += 1
 
-        ax.set_xlabel('Time, (ms.)', fontsize=12)
+
+
+        ax.set_xlabel('Time, (ms)', fontsize=12)
         ax.set_ylabel('Intensity, (a. u.)', fontsize=12)
-        ax.set_title(f'{group_name} - Intens. by time, shot # {name_of_shot}', fontsize=12)
+        ax.set_title(f'{group_name}', fontsize=12)
         ax.grid(True)
         ax.legend(fontsize=8)
 
-        # не работает!!!!!
-
-        # ax1 = plots1[group_name]
-        #
-        # for wave in wave_group:
-        #     if wave >= 550:
-        #         if peak_index1 < len(peaks_to_plot_T):
-        #             ax1.plot(x_time, peaks_to_plot_T[peak_index1],
-        #                     label=f'{wave} nm')
-        #             peak_index1 += 1
-        #         else:
-        #             break
-        #     else:
-        #         if peak_index1 < len(peaks_to_plot_T):
-        #             continue
-        #         else:
-        #             break
-        #
-        #
-        # # Настройки графика
-        # ax1.set_xlabel('Time, (ms.)', fontsize=12)
-        # ax1.set_ylabel('Intensity, (a. u.)', fontsize=12)
-        # ax1.set_title(f'{group_name} - Intens. by time, shot # {name_of_shot}', fontsize=12)
-        # ax1.grid(True)
-        # ax1.legend(fontsize=8)
 
     # 6-й график пустой
-    plots['empty'].set_title(f'Empty - shot # {name_of_shot}', fontsize=12)
-    plots['empty'].grid(True)
 
     # plots1['empty'].set_title(f'Empty - shot # {name_of_shot}', fontsize=12)
     # plots1['empty'].grid(True)
@@ -344,14 +327,14 @@ def init_plots_curr_line(selected_wave_len, wave_name):
     x_time = [i * 4 for i in range(15)]
 
     plt.figure(2)
-    plt.title('Континуум для ' + wave_name + ' ' + str(selected_wave_len) + ' по прицельному параметру')
+    plt.title('Линия ' + wave_name + ' ' + str(selected_wave_len[0]) + ' nm')
     for i in range(len(sort_resh_cont_to_plot_T)):
         plt.plot(x_impact_param, sort_resh_cont_to_plot_T[i], color=colors[i], linestyle=linestyles[i], label=str(x_time[i]+2))
 
     # for i in range(len(reshaped_cont_to_plot_T)):
     #     plt.plot(x_impact_param, reshaped_cont_to_plot_T[i], label=str(x_time[i]))
 
-    plt.xlabel('Impact parameter, mm')
+    plt.xlabel('r, mm')
     plt.ylabel('Intesity, a. u.')
     plt.grid(True)
 
@@ -383,9 +366,9 @@ def main():
     init_plots_continuum_empty(data_directory10, data_directory11)
 
 
-    # selected_wave_len = [568.125]
-    # wave_name = 'N II'
-    # init_plots_curr_line(selected_wave_len, wave_name)
+    selected_wave_len = [568.125]
+    wave_name = 'N II'
+    init_plots_curr_line(selected_wave_len, wave_name)
 
 
 main()
