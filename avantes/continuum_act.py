@@ -166,7 +166,7 @@ def init_plots_continuum_empty(data_directory1, data_directory2 = 0):
         'Continuum': axes[1, 2]  # этот останется пустым
     }
 
-    name_of_ion = ['II', 'II', 'III', 'III', 'II', 'II', 'II', 'I', 'I', 'I', 'II', '$\\gamma$', '$\\beta$', '', '', '']
+    name_of_ion = ['III', 'III', 'II', 'II', 'II', 'II', 'II', 'I', 'I', 'I', 'II', '$\\gamma$', '$\\beta$', '', '', '']
     grp_nm = ['C', 'C', 'C', 'C', 'O', 'O', 'O', 'Cr', 'Cr', 'Cr', 'N', 'D', 'D', '', '', '']
 
     # cчетчик для peaks_to_plot_T
