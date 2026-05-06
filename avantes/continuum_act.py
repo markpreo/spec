@@ -95,9 +95,9 @@ def init_data_continuum_empty(data_directory1, data_directory2 = 0):
 
     # wave_need = np.array([584.35995, 551.66, 668.715, 675.2209, 733.813])
     # base_width_of_peak = [0.4, 1., 1.2, 0.7, 1.3]
-    wave_need = [464.74, 465.025, 657.8, 658.28, 464.916, 434.74, 435.139, 425.4331, 427.4806, 428.9733,
+    wave_need = [464.74, 657.8, 658.28, 464.916, 434.74, 435.139, 425.4331, 427.4806, 428.9733,
                  568.125, 434.0625, 485.9375, 551.66, 584.35995, 675.2209]
-    base_width_of_peak = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 1., 0.4, 0.7]
+    base_width_of_peak = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 1., 0.4, 0.7]
 
     peaks_to_plot_by_shots1 = getSpectrum(wave_need, data_directory1, base_width_of_peak, show=True)
     peaks_to_plot_by_shots = list
@@ -109,7 +109,7 @@ def init_data_continuum_empty(data_directory1, data_directory2 = 0):
     else:
         peaks_to_plot_by_shots = np.array(peaks_to_plot_by_shots1)
 
-    wave_label_C = [464.28, 465.025, 657.8, 658.28]
+    wave_label_C = [464.28, 657.8, 658.28]
     wave_label_O = [464.916, 434.74, 435.139]
     wave_label_Cr = [425.4331, 427.4806, 428.9733]
     wave_label_N = [568.125]
@@ -166,8 +166,8 @@ def init_plots_continuum_empty(data_directory1, data_directory2 = 0):
         'Continuum': axes[1, 2]  # этот останется пустым
     }
 
-    name_of_ion = ['III', 'III', 'II', 'II', 'II', 'II', 'II', 'I', 'I', 'I', 'II', '$\\gamma$', '$\\beta$', '', '', '']
-    grp_nm = ['C', 'C', 'C', 'C', 'O', 'O', 'O', 'Cr', 'Cr', 'Cr', 'N', 'D', 'D', '', '', '']
+    name_of_ion = ['III', 'II', 'II', 'II', 'II', 'II', 'I', 'I', 'I', 'II', '$\\gamma$', '$\\beta$', '', '', '']
+    grp_nm = ['C', 'C', 'C', 'O', 'O', 'O', 'Cr', 'Cr', 'Cr', 'N', 'D', 'D', '', '', '']
 
     # cчетчик для peaks_to_plot_T
     peak_index = 0
@@ -209,6 +209,22 @@ def init_plots_continuum_empty(data_directory1, data_directory2 = 0):
     # plots1['empty'].set_title(f'Empty - shot # {name_of_shot}', fontsize=12)
     # plots1['empty'].grid(True)
 
+    # axes[0, 0].axvspan(30, 36, alpha=0.3, color='blue')
+    # axes[0, 1].axvspan(30, 36, alpha=0.3, color='blue')
+    # axes[0, 2].axvspan(30, 36, alpha=0.3, color='blue')
+    # axes[1, 0].axvspan(30, 36, alpha=0.3, color='blue')
+    # axes[1, 1].axvspan(30, 36, alpha=0.3, color='blue')
+    # axes[1, 2].axvspan(30, 36, alpha=0.3, color='blue')
+    #
+    # axes[0, 0].axvspan(3, 21, alpha=0.3, color='yellow')
+    # axes[0, 1].axvspan(3, 21, alpha=0.3, color='yellow')
+    # axes[0, 2].axvspan(3, 21, alpha=0.3, color='yellow')
+    # axes[1, 0].axvspan(3, 21, alpha=0.3, color='yellow')
+    # axes[1, 1].axvspan(3, 21, alpha=0.3, color='yellow')
+    # axes[1, 2].axvspan(3, 21, alpha=0.3, color='yellow')
+
+
+
     plt.tight_layout()
     plt.show()
 
@@ -230,10 +246,12 @@ def init_data_continuum_curr_line(selected_wave_len):
     print(files)
     cont_to_plot = []
     x_impact_param = []
-    base_width_of_peak = [0.1]
+    base_width_of_peak = [0.7]
+    # wave_need = np.array([584.35995, 551.66, 668.715, 675.2209, 733.813])
+    # base_width_of_peak = [0.4, 1., 1.2, 0.7, 1.3]
 
     for file in files:
-        if int(file[4:6]) < 60: #Менять для разных длин волн! до 500 <60, от 550 >=60
+        if int(file[4:6]) >= 60: #Менять для разных длин волн! до 500 <60, от 550 >=60
             print(int(file[4:6]))
             idx: int
             print(int(file[1:3]), file[0:1])
@@ -361,13 +379,13 @@ def main():
     # init_plots_continuum_empty(data_directory8)
     # data_directory9 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p00 40.STR8'
     # init_plots_continuum_empty(data_directory9)
-    data_directory10 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m60 54.STR8'
-    data_directory11 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m60 61.STR8'
-    init_plots_continuum_empty(data_directory10, data_directory11)
+    #data_directory10 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m60 54.STR8'
+    #data_directory11 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\m60 61.STR8'
+    #init_plots_continuum_empty(data_directory10, data_directory11)
 
 
-    selected_wave_len = [568.125]
-    wave_name = 'N II'
+    selected_wave_len = [675.2209]
+    wave_name = ' '
     init_plots_curr_line(selected_wave_len, wave_name)
 
 
