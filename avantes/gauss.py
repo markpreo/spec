@@ -25,12 +25,29 @@ def gauss_Hb_small(x, A1, d_lambda, sigma, A0):
 def gauss_Db_small(x, A1, d_lambda, sigma, A0):
     return  A1 * np.exp(-(x - 486.137 - d_lambda)**2 / (2 * sigma**2)) + A0
 
-# def multi_gaussian(x, A1, A2, A3, A4, d_lambda, sigma_C, sigma_O, A0):
-#     y_res_multi_g = A1 * np.exp(-(x - 464.74 - d_lambda)**2 / (2 * sigma_C**2)) +\
-#                     A2 * np.exp(-(x - 464.916 - d_lambda) ** 2 / (2 * sigma_O ** 2)) + \
-#                     A3 * np.exp(-(x - 465.025 - d_lambda) ** 2 / (2 * sigma_C ** 2)) + \
-#                     A4 * np.exp(-(x - 465.147 - d_lambda) ** 2 / (2 * sigma_C ** 2)) + A0
-#     return y_res_multi_g
+def multi_gaussian(x, A1, A2, A3, A4, d_lambda, sigma_C, sigma_O, A0):
+    y_res_multi_g = A1 * np.exp(-(x - 464.74 - d_lambda)**2 / (2 * sigma_C**2)) +\
+                    A2 * np.exp(-(x - 464.916 - d_lambda) ** 2 / (2 * sigma_O ** 2)) + \
+                    A3 * np.exp(-(x - 465.025 - d_lambda) ** 2 / (2 * sigma_C ** 2)) + \
+                    A4 * np.exp(-(x - 465.147 - d_lambda) ** 2 / (2 * sigma_C ** 2)) + A0
+    return y_res_multi_g
+
+def gauss_C3_1(x, A_C3_1, d_lambda, sigma_C, A0):
+    y_res = A_C3_1 * np.exp(-(x - 464.74 - d_lambda) ** 2 / (2 * sigma_C ** 2)) + A0
+    return y_res
+
+def gauss_O2_1(x, A_O2_1, d_lambda, sigma_O, A0):
+    y_res = A_O2_1 * np.exp(-(x - 464.916 - d_lambda) ** 2 / (2 * sigma_O ** 2)) + A0
+    return y_res
+
+def gauss_C3_2(x, A_C3_2, d_lambda, sigma_C, A0):
+    y_res = A_C3_2 * np.exp(-(x - 465.025 - d_lambda) ** 2 / (2 * sigma_C ** 2)) + A0
+    return y_res
+
+def gauss_C3_3(x, A_C3_3, d_lambda, sigma_C, A0):
+    y_res = A_C3_3 * np.exp(-(x - 465.147 - d_lambda) ** 2 / (2 * sigma_C ** 2)) + A0
+    return y_res
+
 
 def balmer_Hb_Db_gauss(x, A1, A2, A3, A4, d_lambda, sigma_Hb, sigma_Db, sigma_Hs, sigma_Ds, A0):
     y_res_balmer_Hb_Db_gauss = A1 * np.exp(-(x - 486.269 - d_lambda)**2 / (2 * sigma_Hb**2)) +\
@@ -39,38 +56,49 @@ def balmer_Hb_Db_gauss(x, A1, A2, A3, A4, d_lambda, sigma_Hb, sigma_Db, sigma_Hs
                                 A4 * np.exp(-(x - 486.137 - d_lambda) ** 2 / (2 * sigma_Ds ** 2)) + A0
     return y_res_balmer_Hb_Db_gauss
 
-def init_data(data_directory_1, data_directory_2):
+def init_data(data_directory_1, data_directory_2=0):
 
     datas_blue = avaread.read_file(data_directory_1)
-    datas_red = avaread.read_file(data_directory_2)
 
     low_signal_times = 3
 
     bkgs_b = fillBkgs(datas_blue, low_signal_times)
     bkgd_b = np.average(bkgs_b, axis=0)
 
-    bkgs_r = fillBkgs(datas_red, low_signal_times)
-    bkgd_r = np.average(bkgs_r, axis=0)
-
     times = 15
     waves_b = datas_blue.wavelength
-    waves_r = datas_red.wavelength
-    waves = np.append(waves_b, waves_r)
+
+    if data_directory_2 != 0:
+        datas_red = avaread.read_file(data_directory_2)
+        bkgs_r = fillBkgs(datas_red, low_signal_times)
+        bkgd_r = np.average(bkgs_r, axis=0)
+        waves_r = datas_red.wavelength
+        waves = np.append(waves_b, waves_r)
+    else:
+        waves = waves_b
+        datas_red = 0
+        bkgd_r = 0
+
     return waves, bkgd_b, bkgd_r, datas_blue, datas_red, times
 
-def init_spectrum(data_directory_1, data_directory_2):
+def init_spectrum(data_directory_1, data_directory_2=0):
     waves, bkgd_b, bkgd_r, datas_blue, datas_red, times = init_data(data_directory_1, data_directory_2)
     final_spectrum = []
     for time in range(times):
         final_spectrum_b = datas_blue.scope.T[time] - bkgd_b
-        final_spectrum_r = datas_red.scope.T[time] - bkgd_r
-        one_time_final_spectrum = np.append(final_spectrum_b, final_spectrum_r)
-        one_time_final_spectrum = list(one_time_final_spectrum)
-        final_spectrum.append(one_time_final_spectrum)
+        if datas_red != 0:
+            final_spectrum_r = datas_red.scope.T[time] - bkgd_r
+            one_time_final_spectrum = np.append(final_spectrum_b, final_spectrum_r)
+            one_time_final_spectrum = list(one_time_final_spectrum)
+            final_spectrum.append(one_time_final_spectrum)
+        else:
+            one_time_final_spectrum = final_spectrum_b
+            one_time_final_spectrum = list(one_time_final_spectrum)
+            final_spectrum.append(one_time_final_spectrum)
     return final_spectrum, waves, times
 
 
-def init_graph(data_directory_1, data_directory_2):
+def init_graph(data_directory_1, data_directory_2=0):
     plt.figure()
     colors = [
         '#0033CC',  # 1 - темно-синий (глубокий)
@@ -147,7 +175,8 @@ def init_data_gauss(chosen_time, data_directory_1, data_directory_2):
 
     popt_full, pcov_full = curve_fit(
         multi_gaussian, x_region, y_region,
-        p0=[A1, A2, A3, A4, d_lambda, sigma_C, sigma_O, A0]
+        p0=[A1, A2, A3, A4, d_lambda, sigma_C, sigma_O, A0],
+        bounds=(0, 1000000)
     )
 
     return waves, chosen_time_spectrum, x_region, y_region, popt_full
@@ -221,10 +250,10 @@ def init_data_balmer_Hb_Db_gauss(chosen_time, data_directory_1, data_directory_2
 
 def init_graph_gauss(chosen_time, data_directory_1, data_directory_2):
     #waves, chosen_time_spectrum, x_region, y_region, popt_full = init_data_gauss(chosen_time, data_directory_1, data_directory_2)
-    waves, chosen_time_spectrum, x_region, y_region, popt_full = init_data_balmer_Hb_Db_gauss(chosen_time, data_directory_1, data_directory_2)
+    waves, chosen_time_spectrum, x_region, y_region, popt_full = init_data_gauss(chosen_time, data_directory_1, data_directory_2)
     # кривая для отображения
     x_fit = np.linspace(x_region.min(), x_region.max(), 500)
-    y_fit = balmer_Hb_Db_gauss(x_fit, *popt_full)
+    y_fit = multi_gaussian(x_fit, *popt_full)
 
 
     plt.figure(figsize=(10, 6))
@@ -238,37 +267,42 @@ def init_graph_gauss(chosen_time, data_directory_1, data_directory_2):
     y_popt.append(popt_full[0])
     y_popt.append(popt_full[4])
     y_popt.append(popt_full[5])
-    y_popt.append(popt_full[9])
+    y_popt.append(popt_full[7])
 
-    y_fit_Hb_big = gauss_Hb_big(x_fit, *y_popt)
-    plt.plot(x_fit, y_fit_Hb_big, 'r', linestyle='dotted', linewidth=2, label='H_warm')
+    print(y_popt)
+
+    y_fit = gauss_C3_1(x_fit, *y_popt)
+    plt.plot(x_fit, y_fit, 'r', linestyle='dotted', linewidth=2, label='C3_1')
 
     y_popt = []
     y_popt.append(popt_full[1])
     y_popt.append(popt_full[4])
     y_popt.append(popt_full[6])
-    y_popt.append(popt_full[9])
+    y_popt.append(popt_full[7])
+    print(y_popt)
 
-    y_fit_Db_big = gauss_Db_big(x_fit, *y_popt)
-    plt.plot(x_fit, y_fit_Db_big, 'g', linestyle='dashed', linewidth=2,  label='D_warm')
+    y_fit = gauss_O2_1(x_fit, *y_popt)
+    plt.plot(x_fit, y_fit, 'g', linestyle='dotted', linewidth=2, label='O2')
 
     y_popt = []
     y_popt.append(popt_full[2])
     y_popt.append(popt_full[4])
+    y_popt.append(popt_full[5])
     y_popt.append(popt_full[7])
-    y_popt.append(popt_full[9])
+    print(y_popt)
 
-    y_fit_Hb_small = gauss_Hb_small(x_fit, *y_popt)
-    plt.plot(x_fit, y_fit_Hb_small, 'orange', linestyle='dotted', linewidth=2,  label='H_hot')
+    y_fit = gauss_C3_2(x_fit, *y_popt)
+    plt.plot(x_fit, y_fit, 'orange', linestyle='dotted', linewidth=2, label='C3_2')
 
     y_popt = []
     y_popt.append(popt_full[3])
     y_popt.append(popt_full[4])
-    y_popt.append(popt_full[8])
-    y_popt.append(popt_full[9])
+    y_popt.append(popt_full[5])
+    y_popt.append(popt_full[7])
+    print(y_popt)
 
-    y_fit_Db_small = gauss_Db_small(x_fit, *y_popt)
-    plt.plot(x_fit, y_fit_Db_small, 'pink', linestyle='dashed', linewidth=2,  label='D_hot')
+    y_fit = gauss_C3_3(x_fit, *y_popt)
+    plt.plot(x_fit, y_fit, 'brown', linestyle='dotted', linewidth=2, label='C3_3')
 
 
     plt.xlabel('Длина волны (нм)')
@@ -281,11 +315,12 @@ def init_graph_gauss(chosen_time, data_directory_1, data_directory_2):
 
 
 def main():
-    data_directory_1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p40 45.STR8'
-    data_directory_2 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p40 66.STR8'
-    #init_graph(data_directory_1, data_directory_2)
+    data_directory_1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\260428\1.STR8'
+    #data_directory_1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p40 45.STR8'
+    #data_directory_2 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p40 66.STR8'
+    init_graph(data_directory_1)
     chosen_time = 8
-    init_graph_gauss(chosen_time, data_directory_1, data_directory_2)
+    init_graph_gauss(chosen_time, data_directory_1, data_directory_2=0)
 
 main()
 

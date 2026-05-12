@@ -12,18 +12,17 @@ def fillBkgs(datas, low_signal_times):
     return bkgs
 
 
-
 def gauss_Hb_big(x, A1, sigma_Hb, A0):
-    return  A1 * np.exp(-(x - 486.137)**2 / (2 * sigma_Hb**2)) + A0
+    return  A1 * np.exp(-(x - 485.908)**2 / (2 * sigma_Hb**2)) + A0
 #486.137
 def gauss_Db_big(x, A2, sigma_Db, A0):
-    return  A2 * np.exp(-(x - 486.029)**2 / (2 * sigma_Db**2)) + A0
+    return  A2 * np.exp(-(x - 485.978)**2 / (2 * sigma_Db**2)) + A0
 #486.045
 def gauss_Hb_small(x, A3, sigma_Hs, A0):
-    return  A3 * np.exp(-(x - 486.137)**2 / (2 * sigma_Hs**2)) + A0
+    return  A3 * np.exp(-(x - 485.908)**2 / (2 * sigma_Hs**2)) + A0
 
 def gauss_Db_small(x, A4, sigma_Ds, A0):
-    return  A4 * np.exp(-(x - 486.029)**2 / (2 * sigma_Ds**2)) + A0
+    return  A4 * np.exp(-(x - 485.978)**2 / (2 * sigma_Ds**2)) + A0
 
 # def multi_gaussian(x, A1, A2, A3, A4, d_lambda, sigma_C, sigma_O, A0):
 #     y_res_multi_g = A1 * np.exp(-(x - 464.74 - d_lambda)**2 / (2 * sigma_C**2)) +\
@@ -33,32 +32,40 @@ def gauss_Db_small(x, A4, sigma_Ds, A0):
 #     return y_res_multi_g
 
 def balmer_Hb_Db_gauss(x, A1, A2, sigma_Hb, sigma_Db, A0):
-    y_res_balmer_Hb_Db_gauss = (A1 * np.exp(-(x - 486.137)**2 / (2 * sigma_Hb**2))) + (A2 * np.exp(-(x - 486.03)**2 / (2 * sigma_Db**2))) + A0
+    y_res_balmer_Hb_Db_gauss = (A1 * np.exp(-(x - 485.908)**2 / (2 * sigma_Hb**2))) + (A2 * np.exp(-(x - 485.978)**2 / (2 * sigma_Db**2))) + A0
     return y_res_balmer_Hb_Db_gauss
 
 def balmer_Hb_Db_gauss_4(x, A1, A2, A3, A4, sigma_Hb, sigma_Db, sigma_Hs, sigma_Ds, A0):
-    y_res_balmer_Hb_Db_gauss = (A1 * np.exp(-(x - 486.137)**2 / (2 * sigma_Hb**2))) + (A2 * np.exp(-(x - 486.03)**2 / (2 * sigma_Db**2))) + \
-                               (A3 * np.exp(-(x - 486.137)**2 / (2 * sigma_Hs**2))) + (A4 * np.exp(-(x - 486.03)**2 / (2 * sigma_Ds**2))) + A0
+    y_res_balmer_Hb_Db_gauss = (A1 * np.exp(-(x - 485.908)**2 / (2 * sigma_Hb**2))) + (A2 * np.exp(-(x - 485.978)**2 / (2 * sigma_Db**2))) + \
+                               (A3 * np.exp(-(x - 485.908)**2 / (2 * sigma_Hs**2))) + (A4 * np.exp(-(x - 485.978)**2 / (2 * sigma_Ds**2))) + A0
     return y_res_balmer_Hb_Db_gauss
 
-
+#486.137
+#486.03
 def init_data(data_directory_1, data_directory_2):
 
     datas_blue = avaread.read_file(data_directory_1)
-    datas_red = avaread.read_file(data_directory_2)
 
     low_signal_times = 3
 
     bkgs_b = fillBkgs(datas_blue, low_signal_times)
     bkgd_b = np.average(bkgs_b, axis=0)
 
-    bkgs_r = fillBkgs(datas_red, low_signal_times)
-    bkgd_r = np.average(bkgs_r, axis=0)
-
     times = 15
     waves_b = datas_blue.wavelength
-    waves_r = datas_red.wavelength
-    waves = np.append(waves_b, waves_r)
+
+    if data_directory_2 != 0:
+        datas_red = avaread.read_file(data_directory_2)
+        bkgs_r = fillBkgs(datas_red, low_signal_times)
+        bkgd_r = np.average(bkgs_r, axis=0)
+        waves_r = datas_red.wavelength
+        waves = np.append(waves_b, waves_r)
+    else:
+        waves = waves_b
+        datas_red = 0
+        bkgd_r = 0
+
+
     return waves, bkgd_b, bkgd_r, datas_blue, datas_red, times
 
 def init_spectrum(data_directory_1, data_directory_2):
@@ -66,10 +73,15 @@ def init_spectrum(data_directory_1, data_directory_2):
     final_spectrum = []
     for time in range(times):
         final_spectrum_b = datas_blue.scope.T[time] - bkgd_b
-        final_spectrum_r = datas_red.scope.T[time] - bkgd_r
-        one_time_final_spectrum = np.append(final_spectrum_b, final_spectrum_r)
-        one_time_final_spectrum = list(one_time_final_spectrum)
-        final_spectrum.append(one_time_final_spectrum)
+        if datas_red != 0:
+            final_spectrum_r = datas_red.scope.T[time] - bkgd_r
+            one_time_final_spectrum = np.append(final_spectrum_b, final_spectrum_r)
+            one_time_final_spectrum = list(one_time_final_spectrum)
+            final_spectrum.append(one_time_final_spectrum)
+        else:
+            one_time_final_spectrum = final_spectrum_b
+            one_time_final_spectrum = list(one_time_final_spectrum)
+            final_spectrum.append(one_time_final_spectrum)
     return final_spectrum, waves, times
 
 
@@ -120,24 +132,56 @@ def init_graph(data_directory_1, data_directory_2):
     plt.legend()
     plt.show()
 
+def auto_peaking(chosen_time, data_directory_1, data_directory_2):
+    final_spectrum, waves, times = init_spectrum(data_directory_1, data_directory_2)
+    peaks = []
+    for point in range(1, len(waves)-1):
+        if (final_spectrum[chosen_time][point] > final_spectrum[chosen_time][point-1]) and \
+            (final_spectrum[chosen_time][point] > final_spectrum[chosen_time][point+1]):
+            peaks.append([waves[point], final_spectrum[chosen_time][point]])
+
+    return peaks, final_spectrum, waves
+
+def init_graph_autopeaking(chosen_time, i_filter, data_directory_1, data_directory_2):
+
+    peaks, final_spectrum, waves = auto_peaking(chosen_time, data_directory_1, data_directory_2)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(waves, final_spectrum[chosen_time], 'b-', label='Экспериментальный спектр', alpha=0.7)
+
+    for line in range(len(peaks)):
+        if peaks[line][1] >= i_filter:
+            plt.axvline(x=peaks[line][0], color='pink', linewidth=1)
+
+    plt.xlabel('Длина волны (нм)')
+    plt.ylabel('Интенсивность')
+    plt.legend()
+    plt.title('Autopeaking')
+    plt.grid(True, alpha=0.3)
+
+    plt.show()
 
 def init_data_gauss(chosen_time, data_directory_1, data_directory_2):
 
     datas_blue = avaread.read_file(data_directory_1)
-    datas_red = avaread.read_file(data_directory_2)
-
     spectrum_b = datas_blue.scope.T[chosen_time]
-    spectrum_r = datas_red.scope.T[chosen_time]
-    chosen_time_spectrum = np.array([])
-    chosen_time_spectrum = np.append(spectrum_b, spectrum_r)
-
     waves_b = datas_blue.wavelength
-    waves_r = datas_red.wavelength
-    waves = np.append(waves_b, waves_r)
-
     bkgd_b = fillBkgs(datas_blue, low_signal_times=3)
-    bkgd_r = fillBkgs(datas_red, low_signal_times=3)
-    bkgd = np.append(bkgd_b, bkgd_r)
+
+    if data_directory_2 != 0:
+        datas_red = avaread.read_file(data_directory_2)
+        spectrum_r = datas_red.scope.T[chosen_time]
+        chosen_time_spectrum = np.array([])
+        chosen_time_spectrum = np.append(spectrum_b, spectrum_r)
+        waves_r = datas_red.wavelength
+        waves = np.append(waves_b, waves_r)
+        bkgd_r = fillBkgs(datas_red, low_signal_times=3)
+        bkgd = np.append(bkgd_b, bkgd_r)
+    else:
+        waves = waves_b
+        bkgd = bkgd_b
+        chosen_time_spectrum = spectrum_b
+
     for i in range(len(chosen_time_spectrum)):
         chosen_time_spectrum[i] = chosen_time_spectrum[i] - bkgd[i]
 
@@ -159,28 +203,37 @@ def init_data_gauss(chosen_time, data_directory_1, data_directory_2):
 def init_data_balmer_Hb_Db_gauss(chosen_time, data_directory_1, data_directory_2):
 
     datas_blue = avaread.read_file(data_directory_1)
-    datas_red = avaread.read_file(data_directory_2)
-
     spectrum_b = datas_blue.scope.T[chosen_time]
-    spectrum_r = datas_red.scope.T[chosen_time]
-    chosen_time_spectrum = np.array([])
-    chosen_time_spectrum = np.append(spectrum_b, spectrum_r)
-
     waves_b = datas_blue.wavelength
-    waves_r = datas_red.wavelength
-    waves = np.append(waves_b, waves_r)
-
     bkgd_b = fillBkgs(datas_blue, low_signal_times=3)
-    bkgd_r = fillBkgs(datas_red, low_signal_times=3)
-    bkgd = np.append(bkgd_b, bkgd_r)
+
+    if data_directory_2 != 0:
+        datas_red = avaread.read_file(data_directory_2)
+        spectrum_r = datas_red.scope.T[chosen_time]
+        chosen_time_spectrum = np.array([])
+        chosen_time_spectrum = np.append(spectrum_b, spectrum_r)
+        waves_r = datas_red.wavelength
+        waves = np.append(waves_b, waves_r)
+        bkgd_r = fillBkgs(datas_red, low_signal_times=3)
+        bkgd_r = np.average(bkgd_r)
+        bkgd_b = np.average(bkgd_b)
+        bkgd = np.average(bkgd_b, bkgd_r)
+    else:
+        waves = waves_b
+        bkgd = np.average(bkgd_b)
+        chosen_time_spectrum = np.array(spectrum_b)
+
+
+    print(bkgd)
+    print(np.size(chosen_time_spectrum))
     for i in range(len(chosen_time_spectrum)):
-        chosen_time_spectrum[i] = chosen_time_spectrum[i] - bkgd[i]
+        chosen_time_spectrum[i] = chosen_time_spectrum[i] - bkgd
 
     peak_region_mask = (waves >= 485) & (waves <= 487)
     x_region = waves[peak_region_mask]
     y_region = chosen_time_spectrum[peak_region_mask]
 
-    A1, A2, A3, A4, sigma_Hb, sigma_Db, sigma_Hs, sigma_Ds, A0 = 42480, 17000, 0, 0, 0.1, 0.1, 0.5, 0.5, 0
+    A1, A2, A3, A4, sigma_Hb, sigma_Db, sigma_Hs, sigma_Ds, A0 = 5500, 16650, 0, 0, 0.1, 0.1, 0.5, 0.5, 0
     #A1, A2, sigma_Hb, sigma_Db, A0 = 17000, 42480, 0.1, 0.1, 0
 
     popt_full_1, pcov_full_1 = curve_fit(
@@ -249,11 +302,16 @@ def init_graph_gauss(chosen_time, data_directory_1, data_directory_2):
 
 
 def main():
-    data_directory_1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p40 45.STR8'
-    data_directory_2 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p40 66.STR8'
+    data_directory_1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\260428\1.STR8'
+    #data_directory_1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p40 45.STR8'
+    #data_directory_2 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\111225\p40 66.STR8'
     #init_graph(data_directory_1, data_directory_2)
-    chosen_time = 8
-    init_graph_gauss(chosen_time, data_directory_1, data_directory_2)
+
+    #init_graph(data_directory_1, data_directory_2=0)
+    chosen_time = 3
+    i_filter = 300
+    #init_graph_gauss(chosen_time, data_directory_1, data_directory_2=0)
+    init_graph_autopeaking(chosen_time, i_filter, data_directory_1, data_directory_2=0)
 
 main()
 
