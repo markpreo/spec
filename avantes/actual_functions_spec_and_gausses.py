@@ -266,22 +266,42 @@ def init_graph_gist_feach(data_directory_1, data_directory_2):
     print(n_frames, n_pixels)
 
     # ширина и форматируемые параметры можно менять
-    for p in range(n_pixels):
-        print('Start drawing graph N ' + str(p))
-        vals = errors_blue[p]
-        print(vals)
-        print(len(errors_blue[p]))
-        fig, ax = plt.subplots(figsize=(4, 3))
-        ax.hist(vals, bins=33, color='C0', edgecolor='black', alpha=0.8)
-        ax.set_xlabel('Value', fontsize=8)
-        ax.set_ylabel('Count', fontsize=8)
-        ax.set_title(f'Pixel {p}', fontsize=9)
-        ax.tick_params(axis='both', which='major', labelsize=7)
-        plt.tight_layout()
-        fname = os.path.join(output_dir, f'hist_pixel_{p:04d}.png')
-        fig.savefig(fname)
-        plt.close(fig)
-        print('Ended graph N ' + str(p))
+    # for p in range(n_pixels):
+    #     print('Start drawing graph N ' + str(p))
+    #     vals = errors_blue[p]
+    #     print(vals)
+    #     print(len(errors_blue[p]))
+    #     fig, ax = plt.subplots(figsize=(4, 3))
+    #     ax.hist(vals, bins=33, color='C0', edgecolor='black', alpha=0.8)
+    #     ax.set_xlabel('Value', fontsize=8)
+    #     ax.set_ylabel('Count', fontsize=8)
+    #     ax.set_title(f'Pixel {p}', fontsize=9)
+    #     ax.tick_params(axis='both', which='major', labelsize=7)
+    #     plt.tight_layout()
+    #     fname = os.path.join(output_dir, f'hist_pixel_{p:04d}.png')
+    #     fig.savefig(fname)
+    #     plt.close(fig)
+    #     print('Ended graph N ' + str(p))
+
+    vals_sum_list = []
+
+    for i in range(len(errors_blue[0])):
+        vals_sum = 0
+        for j in range(len(errors_blue)):
+            vals_sum += errors_blue[j][i]
+        vals_sum_list.append(vals_sum)
+
+    fig, ax = plt.subplots(figsize=(4, 3))
+    ax.hist(vals_sum_list, bins=66, color='C0', edgecolor='black', alpha=0.8)
+    ax.set_xlabel('Value', fontsize=8)
+    ax.set_ylabel('Count', fontsize=8)
+    ax.set_title(f'Pixels 2047', fontsize=9)
+    ax.tick_params(axis='both', which='major', labelsize=7)
+    plt.tight_layout()
+    fname = os.path.join(output_dir, f'hist_pixels_2047_1.png')
+    fig.savefig(fname)
+    plt.close(fig)
+
 
 
 def init_graph_autopeaking(chosen_time, i_filter, data_directory_1, data_directory_2):
