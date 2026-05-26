@@ -1,10 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+from functools import partial
 import avaread
 import matplotlib.patches as patches
 import math
 import os
+from scipy.stats import alpha
 
 
 def fillBkgs(datas, low_signal_times):
@@ -53,6 +55,9 @@ def gauss_Hg_small(x, A3, sigma_Hsg, A0):
 
 def gauss_Dg_small(x, A4, sigma_Dsg, A0):
     return  A4 * np.exp(-(x - 433.92833)**2 / (2 * sigma_Dsg**2)) + A0
+
+def gauss_for_gists(x, A, sigma, d_lambda, A0, center):
+    return A * np.exp(-(x - center) ** 2 / (2 * sigma ** 2)) + A0
 
 
 def balmer_Hg_Dg_gauss_4(x, A1, A2, A3, A4, sigma_Hg, sigma_Dg, sigma_Hsg, sigma_Dsg, A0):
@@ -166,71 +171,71 @@ def apparat_func_corrected(chosen_time, final_spectrum, waves):
     pass
 
 
-def device_errors(data_directory_1, data_directory_2):
-    data_blue = avaread.read_file(data_directory_1)
-    errors_blue = []
-    for i in range(len(data_blue)):
-        errors_blue.append(data_blue.scope.T[i])
+# def device_errors(data_directory_1, data_directory_2):
+#     data_blue = avaread.read_file(data_directory_1)
+#     errors_blue = []
+#     for i in range(len(data_blue)):
+#         errors_blue.append(data_blue.scope.T[i])
+#
+#     #расчет сред кв отклон для каждого знач.
+#     res_std_blue = np.std(errors_blue, axis=0)
+#     print(res_std_blue)
+#     print(len(res_std_blue))
+#
+#
+#     if data_directory_2 != 0:
+#         data_red = avaread.read_file(data_directory_2)
+#         errors_red = []
+#         for i in range(len(data_red)):
+#             errors_red.append(data_red.scope.T[i])
+#         res_std_red = np.std(errors_red, axis=1)
+#         print(res_std_red)
+#         print(len(res_std_red))
+#     else:
+#         res_std_red = 0
+#
+#     return res_std_blue, res_std_red
 
-    #расчет сред кв отклон для каждого знач.
-    res_std_blue = np.std(errors_blue, axis=0)
-    print(res_std_blue)
-    print(len(res_std_blue))
+# def init_data_std_errors_blue(res_std_blue):
+#     width_gap = 0.05
+#     first_std_blue = min(res_std_blue)
+#     count_of_bins = math.floor((max(res_std_blue) - min(res_std_blue)) / width_gap)
+#     print(count_of_bins)
+#     subs_gist = []
+#     height_gist = []
+#     for j in range(count_of_bins):
+#         print(first_std_blue)
+#         count = 0
+#         buff_one_gist = []
+#         for i in range(len(res_std_blue)):
+#             if (res_std_blue[i] <= first_std_blue + width_gap) and (res_std_blue[i] >= first_std_blue):
+#                 count += 1
+#                 buff_one_gist.append(res_std_blue[i])
+#         if len(buff_one_gist) > 0:
+#             subs_gist.append(np.mean(buff_one_gist))
+#             height_gist.append(count)
+#         first_std_blue += width_gap
+#
+#     print(subs_gist)
+#     print(height_gist)
+#     return subs_gist, height_gist
 
-
-    if data_directory_2 != 0:
-        data_red = avaread.read_file(data_directory_2)
-        errors_red = []
-        for i in range(len(data_red)):
-            errors_red.append(data_red.scope.T[i])
-        res_std_red = np.std(errors_red, axis=1)
-        print(res_std_red)
-        print(len(res_std_red))
-    else:
-        res_std_red = 0
-
-    return res_std_blue, res_std_red
-
-def init_data_std_errors_blue(res_std_blue):
-    width_gap = 0.05
-    first_std_blue = min(res_std_blue)
-    count_of_bins = math.floor((max(res_std_blue) - min(res_std_blue)) / width_gap)
-    print(count_of_bins)
-    subs_gist = []
-    height_gist = []
-    for j in range(count_of_bins):
-        print(first_std_blue)
-        count = 0
-        buff_one_gist = []
-        for i in range(len(res_std_blue)):
-            if (res_std_blue[i] <= first_std_blue + width_gap) and (res_std_blue[i] >= first_std_blue):
-                count += 1
-                buff_one_gist.append(res_std_blue[i])
-        if len(buff_one_gist) > 0:
-            subs_gist.append(np.mean(buff_one_gist))
-            height_gist.append(count)
-        first_std_blue += width_gap
-
-    print(subs_gist)
-    print(height_gist)
-    return subs_gist, height_gist
-
-def init_graphgist_errors(data_directory_1, data_directory_2):
-    res_std_blue, res_std_red = device_errors(data_directory_1, data_directory_2)
-    subs_gist, height_gist = init_data_std_errors_blue(res_std_blue)
-    fig, ax = plt.subplots()
-    x = [float(v) for v in subs_gist]
-    widths = 0.03
-    ax.bar(x, height_gist, width=widths, align='center', color='C0', edgecolor='black', alpha=0.8)
-
-    ax.set_xticks(x)
-    ax.set_xticklabels([f"{v:.2f}" for v in x], rotation=45, fontsize=7)
-    ax.set_xlabel('Intensity')
-    ax.set_ylabel('Count')
-    ax.set_title('Histogram (bars at subs_gist)')
-    plt.tight_layout()
-    plt.show()
-    return fig, ax
+# def init_graphgist_errors(data_directory_1, data_directory_2):
+#     res_std_blue, res_std_red = device_errors(data_directory_1, data_directory_2)
+#     subs_gist, height_gist = init_data_std_errors_blue(res_std_blue)
+#     fig, ax = plt.subplots()
+#     x = [float(v) for v in subs_gist]
+#     widths = 0.03
+#     ax.bar(x, height_gist, width=widths, align='center', color='C0', edgecolor='black', alpha=0.8)
+#
+#     ax.set_xticks(x)
+#     ax.set_xticklabels([f"{v:.2f}" for v in x], rotation=45, fontsize=7)
+#     ax.set_xlabel('Intensity')
+#     ax.set_ylabel('Count')
+#     ax.set_title('Histogram (bars at subs_gist)')
+#     plt.tight_layout()
+#     plt.show()
+#     return fig, ax
 
 def init_data_gist_each_point(data_directory_1, data_directory_2):
     data_blue = avaread.read_file(data_directory_1)
@@ -253,10 +258,7 @@ def init_data_gist_each_point(data_directory_1, data_directory_2):
 
 def init_graph_gist_feach(data_directory_1, data_directory_2):
     errors_blue, errors_red = init_data_gist_each_point(data_directory_1, data_directory_2)
-    """
-        measurements: numpy array shape (n_frames, n_pixels) e.g. (1000, 2047)
-        output_dir: папка для сохранения графиков (создаётся если не существует)
-        """
+
     output_dir = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\260518'
     os.makedirs(output_dir, exist_ok=True)
 
@@ -301,6 +303,163 @@ def init_graph_gist_feach(data_directory_1, data_directory_2):
     fname = os.path.join(output_dir, f'hist_pixels_2047_1.png')
     fig.savefig(fname)
     plt.close(fig)
+
+def init_graph_gist_gauss(data_directory_1, data_directory_2):
+    errors_blue, errors_red = init_data_gist_each_point(data_directory_1, data_directory_2)
+
+    pixels_list_b = [107, 922]
+    pixels_list_r = [111, 222]
+
+    if errors_red != 0:
+        errors_red = np.array(errors_red)
+        errors_red = errors_red.transpose()
+
+        fig, axes = plt.subplots(1, 2, figsize=(8, 8))
+        axes = axes.flatten()
+
+        for n, ax in zip(pixels_list_r, axes):
+            print(n)
+            counts, bins, patches = ax.hist(errors_red[n], bins=33, color='C0', edgecolor='black', alpha=0.8)
+            counts = np.append(counts, 0)
+
+            idxs = np.argsort(counts)[-5:][::-1]  # индексы N максимальных в порядке убывания
+            center = bins[idxs]
+            center = np.mean(center)
+            # idx = np.argmax(counts)
+            # center = bins[idx]
+            A, sigma, d_lambda, A0 = 100, 100, 0, 0
+
+            gauss_for_gists_partial = partial(gauss_for_gists, center=center)
+            popt, pcov = curve_fit(
+                gauss_for_gists_partial, bins, counts,
+                p0=[A, sigma, d_lambda, A0],
+                bounds=([80, 0, -300, 0], [200, 300, 300, 100])
+            )
+
+            x_fit = np.linspace(bins.min(), bins.max(), 500)
+            y_fit = gauss_for_gists_partial(x_fit, *popt)
+
+            ax.plot(x_fit, y_fit, color='red')
+
+            ax.set_xlabel('Intensity', fontsize=8)
+            ax.set_ylabel('Amount of values', fontsize=8)
+            ax.set_title(f'Pixel of red channel #' + str(n), fontsize=9)
+            ax.tick_params(axis='both', which='major', labelsize=7)
+
+        plt.tight_layout()
+
+
+
+    errors_blue = np.array(errors_blue)
+    errors_blue = errors_blue.transpose()
+
+    #pixels_list = [17, 78, 107, 108, 124, 895, 922, 1588, 1598, 2038, 2042]
+    fig, axes = plt.subplots(1, 2, figsize=(8, 8))
+    axes = axes.flatten()
+
+    for n, ax in zip(pixels_list_b, axes):
+            print(n)
+            counts, bins, patches = ax.hist(errors_blue[n], bins=33, color='C0', edgecolor='black', alpha=0.8)
+            counts = np.append(counts, 0)
+
+            idxs = np.argsort(counts)[-5:][::-1]  # индексы N максимальных в порядке убывания
+            center = bins[idxs]
+            center = np.mean(center)
+            # idx = np.argmax(counts)
+            # center = bins[idx]
+            A, sigma, d_lambda, A0 = 100, 100, 0, 0
+
+            gauss_for_gists_partial = partial(gauss_for_gists, center=center)
+            popt, pcov = curve_fit(
+                gauss_for_gists_partial, bins, counts,
+                p0=[A, sigma, d_lambda, A0],
+                bounds=([80, 0, -300, 0],[200, 300, 300, 100])
+            )
+
+            x_fit = np.linspace(bins.min(), bins.max(), 500)
+            y_fit = gauss_for_gists_partial(x_fit, *popt)
+
+            ax.plot(x_fit, y_fit, color='red')
+
+            ax.set_xlabel('Intensity', fontsize=8)
+            ax.set_ylabel('Amount of values', fontsize=8)
+            ax.set_title(f'Pixel of blue channel #' + str(n), fontsize=9)
+            ax.tick_params(axis='both', which='major', labelsize=7)
+
+    plt.tight_layout()
+    plt.show()
+
+def init_graph_mean_median_each_pixel(data_directory_1, data_directory_2):
+    errors_blue, errors_red = init_data_gist_each_point(data_directory_1, data_directory_2)
+
+    errors_blue = np.array(errors_blue)
+    n_frames, n_pixels = errors_blue.shape
+    errors_blue = errors_blue.transpose()
+
+    if errors_red != 0:
+        errors_red = np.array(errors_red)
+        errors_red = errors_red.transpose()
+        y_mean = [np.mean(errors_red[i]) for i in range(len(errors_red))]
+        y_median = [np.median(errors_red[i]) for i in range(len(errors_red))]
+        x_for_both = [i for i in range(len(errors_red))]
+
+        plt.figure('Red')
+        plt.plot(x_for_both, y_mean, color='orange', label='Mean', linewidth=0.5)
+        plt.plot(x_for_both, y_median, color='red', label='Median', linewidth=0.5, alpha=0.5)
+        plt.title('Mean value and median value')
+        plt.xlabel('Number of pixel')
+        plt.ylabel('Intensity')
+        plt.legend()
+
+
+
+
+
+    y_mean = [np.mean(errors_blue[i]) for i in range(len(errors_blue))]
+    y_median = [np.median(errors_blue[i]) for i in range(len(errors_blue))]
+    x_for_both = [i for i in range(len(errors_blue))]
+
+    plt.figure('Blue')
+    plt.plot(x_for_both, y_mean, color='violet', label='Mean', linewidth=0.5)
+    plt.plot(x_for_both, y_median, color='blue', label='Median', linewidth=0.5, alpha=0.5)
+    plt.title('Mean value and median value')
+    plt.xlabel('Number of pixel')
+    plt.ylabel('Intensity')
+    plt.legend()
+    plt.show()
+
+def init_graph_std_each_pixel(data_directory_1, data_directory_2):
+    errors_blue, errors_red = init_data_gist_each_point(data_directory_1, data_directory_2)
+
+    errors_blue = np.array(errors_blue)
+    n_frames, n_pixels = errors_blue.shape
+    errors_blue = errors_blue.transpose()
+
+    if errors_red != 0:
+        errors_red = np.array(errors_red)
+        errors_red = errors_red.transpose()
+
+        y_std = [np.std(errors_red[i]) for i in range(len(errors_red))]
+        x_std = [i for i in range(len(errors_red))]
+
+        plt.figure('Red std')
+        plt.title('Standart deviation of each pixel')
+        plt.plot(x_std, y_std, color='red', label='Standart deviation', linewidth=0.5, alpha=0.5)
+        plt.xlabel('Number of pixel')
+        plt.ylabel('Intensity')
+        plt.legend()
+
+
+    y_std = [np.std(errors_blue[i]) for i in range(len(errors_blue))]
+    x_std = [i for i in range(len(errors_blue))]
+
+    plt.figure('Blue std')
+    plt.title('Standart deviation of each pixel')
+    plt.plot(x_std, y_std, color='blue',label='Standart deviation', linewidth=0.5, alpha=0.5)
+    plt.xlabel('Number of pixel')
+    plt.ylabel('Intensity')
+    plt.legend()
+    plt.show()
 
 
 
@@ -499,18 +658,23 @@ def init_graph_gauss(chosen_time, data_directory_1, data_directory_2):
 
 
 def main():
+
     data_directory_1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\260518\Noise blue.STR8'
     #data_directory_1 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\260518\Noise blue absolute.STR8'
-    #data_directory_2 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\260518\Noise red.STR8'
+    data_directory_2 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\260518\Noise red.STR8'
     #data_directory_2 = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\260518\Noise red absolute.STR8'
 
-    #init_graph(data_directory_1, data_directory_2)
+
 
     #init_graph(data_directory_1, data_directory_2=0)
     # chosen_time = 3
     # i_filter = 300
     # init_graph_gauss(chosen_time, data_directory_1, data_directory_2=0)
     #init_graph_autopeaking(chosen_time, i_filter, data_directory_1, data_directory_2=0)
-    init_graph_gist_feach(data_directory_1, data_directory_2=0)
+    #init_graph_gist_feach(data_directory_1, data_directory_2=0)
+
+    init_graph_gist_gauss(data_directory_1, data_directory_2)
+    init_graph_mean_median_each_pixel(data_directory_1, data_directory_2)
+    init_graph_std_each_pixel(data_directory_1, data_directory_2)
 
 main()
