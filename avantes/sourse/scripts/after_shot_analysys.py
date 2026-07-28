@@ -96,17 +96,20 @@ def integrate(A, sigma):
     return A * sigma * np.sqrt(np.pi * 2)
 
 
-def approx_gauss(A, sigma, A0, d_l, x_region, y_region, wave):
+def approx_gauss(A, sigma, A0, d_l, x_region, y_region, wave): #подумать над разными ограничениями, передавать из в функцию?
     model = Model(gauss, independent_vars=['x', 'center'])
 
     params = model.make_params()
+    params.add('area', expr='A*abs(sigma)*sqrt(2*pi)')
 
-    params['A'].set(value=A, min=-50, max=15000)
+    params['A'].set(value=A, min=0, max=2**16)
     params['sigma'].set(value=sigma, min=0, max=2)
-    params['A0'].set(value=A0, min=0, max=100)
-    params['d_l'].set(value=d_l, min=-0.1, max=0.1)
+    params['A0'].set(value=A0, min=0, max=1000)
+    params['d_l'].set(value=d_l, min=-0.5, max=0.5)
 
     result = model.fit(y_region, params, x=x_region, center=wave)
+    print('Площадь с погрешностью')
+    print(result.params['area'].value, '+/-', result.params['area'].stderr)
 
     return result
 
@@ -152,17 +155,18 @@ def approx_gauss_CIII_OII_sum_lmfit(x_region, y_region,
 
 
     #одинарные пики отдельно стоящие
-def init_popt_data(data_directory, curr_waves):
+def init_popt_data(data_directory, curr_waves, gaps):
     curr_intens, exact_curr_waves, waves, data = data_by_time(data_directory, curr_waves)
     popt_by_time = np.zeros((20, len(exact_curr_waves), 4))
     x_regions_all = []
     y_regions_all = []
 
+
     for time in range(20):
         x_regions_all.append([])
         y_regions_all.append([])
         for wave in range(len(exact_curr_waves)):
-            peak_region_mask = (waves >= exact_curr_waves[wave] - 0.4) & (waves <= exact_curr_waves[wave] + 0.4) #сделать для каждой линии свое окно
+            peak_region_mask = (waves >= exact_curr_waves[wave] - gaps[wave]) & (waves <= exact_curr_waves[wave] + gaps[wave]) #сделать для каждой линии свое окно
             x_region = waves[peak_region_mask]
             y_region = data[time][peak_region_mask]
             A, sigma, A0, d_l = curr_intens[time][wave], 0.1, 0, 0
@@ -249,8 +253,8 @@ def init_popt_data_sums_lmfit(data_directory, curr_waves):
 
 
 
-def calc_gauss_integral(data_directory, curr_waves):
-    popt_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data(data_directory, curr_waves)
+def calc_gauss_integral(data_directory, curr_waves, gaps):
+    popt_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data(data_directory, curr_waves, gaps)
     #print(popt_by_time)
     res_integrate_by_time = np.zeros((20, len(exact_curr_waves)))
 
@@ -286,63 +290,24 @@ def calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves):
     print(res_integrate_by_time)
     return res_integrate_by_time
 
-def visualize_single_gauss(data_directory, curr_waves):
-    res_integrate_by_time = calc_gauss_integral(data_directory, curr_waves)
+def visualize_integral_single_gauss(data_directory, curr_waves, gaps):
+    res_integrate_by_time = calc_gauss_integral(data_directory, curr_waves, gaps)
     res_integrate_by_time_T = np.transpose(res_integrate_by_time)
 
     # res_integrate_by_time_CIII_OII = calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves)
     # res_integrate_by_time_CIII_OII_T = np.transpose(res_integrate_by_time_CIII_OII)
+    colors = ['#3C9E3C', 'blue']
 
-    colors = [
-        '#0033CC',  # 1 - темно-синий (глубокий)
-        '#1F4CFF',  # 2 - насыщенный синий
-        '#3E6CFF',  # 3 - яркий синий
-        '#1F8CFF',  # 4 - сине-голубой
-        '#00A3CC',  # 5 - глубокий бирюзовый
-        '#00B87A',  # 6 - изумрудно-зеленый
-        '#00A350',  # 7 - темно-изумрудный
-        '#2E8B57',  # 8 - морская волна (насыщенный)
-        '#3C9E3C',  # 9 - глубокий зеленый
-        '#5CAD2C',  # 10 - зеленый с желтым оттенком
-        '#7CBC1C',  # 11 - оливково-зеленый
-        '#9CCB0C',  # 12 - желто-зеленый
-        '#CCCC00',  # 13 - глубокий желто-зеленый
-        '#E6B800',  # 14 - золотисто-желтый
-        '#FFCC00',  # 15 - глубокий желтый (золотой)
-        '#FFB300',  # 16 - янтарный
-        '#FF9900',  # 17 - насыщенный оранжевый
-        '#FF7F00',  # 18 - глубокий оранжевый
-        '#FF6600',  # 19 - оранжево-красный
-        '#FF4500'  # 20 - красно-оранжевый (огненный)
-    ]
+    linestyles = 'solid'
 
-    linestyles = [
-        'solid',  # 1
-        'dashed',  # 2
-        'dotted',  # 3
-        'solid',  # 4
-        'dashed',  # 5
-        'dotted',  # 6
-        'solid',  # 7
-        'dashed',  # 8
-        'dotted',  # 9
-        'solid',  # 10
-        'dashed',  # 11
-        'dotted',  # 12
-        'solid',  # 13
-        'dashed',  # 14
-        'dotted',  # 15
-        'solid',  # 16
-        'dashed',  # 17
-        'dotted',  # 18
-        'solid',  # 19
-        'dashed'  # 20
-    ]
+    line_name = ['Cr I', 'Cr I', 'Cr I', 'D gamma', 'D beta']
+
+    #line_name = ['N II']
 
 
     for wave in range(len(curr_waves)):
         plt.figure()
-        plt.plot(res_integrate_by_time_T[wave] , color=colors[wave], linestyle=linestyles[wave], label=str(curr_waves[wave]))
+        plt.plot(res_integrate_by_time_T[wave] , color=colors[0], linestyle=linestyles, label=str(curr_waves[wave]))
         # plt.plot(res_integrate_by_time_CIII_OII_T[wave], color=colors[wave], linestyle=linestyles[wave],
         #          label=str(curr_waves[wave]))
 
@@ -365,51 +330,11 @@ def visualize_gauss(data_directory, curr_waves):
     #popt_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data(data_directory, curr_waves)
     popt_by_time_sums, exact_curr_waves_sums, x_regions_all_sums, y_regions_all_sums = init_popt_data_sums_lmfit(data_directory, curr_waves)
 
-    colors = [
-        '#0033CC',  # 1 - темно-синий (глубокий)
-        '#1F4CFF',  # 2 - насыщенный синий
-        '#3E6CFF',  # 3 - яркий синий
-        '#1F8CFF',  # 4 - сине-голубой
-        '#00A3CC',  # 5 - глубокий бирюзовый
-        '#00B87A',  # 6 - изумрудно-зеленый
-        '#00A350',  # 7 - темно-изумрудный
-        '#2E8B57',  # 8 - морская волна (насыщенный)
-        '#3C9E3C',  # 9 - глубокий зеленый
-        '#5CAD2C',  # 10 - зеленый с желтым оттенком
-        '#7CBC1C',  # 11 - оливково-зеленый
-        '#9CCB0C',  # 12 - желто-зеленый
-        '#CCCC00',  # 13 - глубокий желто-зеленый
-        '#E6B800',  # 14 - золотисто-желтый
-        '#FFCC00',  # 15 - глубокий желтый (золотой)
-        '#FFB300',  # 16 - янтарный
-        '#FF9900',  # 17 - насыщенный оранжевый
-        '#FF7F00',  # 18 - глубокий оранжевый
-        '#FF6600',  # 19 - оранжево-красный
-        '#FF4500'  # 20 - красно-оранжевый (огненный)
-    ]
+    colors = '#3C9E3C'
 
-    linestyles = [
-        'solid',  # 1
-        'dashed',  # 2
-        'dotted',  # 3
-        'solid',  # 4
-        'dashed',  # 5
-        'dotted',  # 6
-        'solid',  # 7
-        'dashed',  # 8
-        'dotted',  # 9
-        'solid',  # 10
-        'dashed',  # 11
-        'dotted',  # 12
-        'solid',  # 13
-        'dashed',  # 14
-        'dotted',  # 15
-        'solid',  # 16
-        'dashed',  # 17
-        'dotted',  # 18
-        'solid',  # 19
-        'dashed'  # 20
-    ]
+    linestyles = 'solid'
+
+
     # for wave in range(len(exact_curr_waves)):
     #     plt.figure(wave)
     #     plt.title(str(exact_curr_waves[wave]) + ' peak')
@@ -436,7 +361,7 @@ def visualize_gauss(data_directory, curr_waves):
     for time in range(20):
         x_region_fit_sums = np.linspace(min(x_regions_all_sums[time][0]), max(x_regions_all_sums[time][0]), 200)
 
-        plt.plot(x_regions_all_sums[time][0], y_regions_all_sums[time][0], color=colors[time], linestyle=linestyles[time],
+        plt.plot(x_regions_all_sums[time][0], y_regions_all_sums[time][0], color=colors, linestyle=linestyles,
                  label=str(time))
         print('popt_by_time_sums')
         print(popt_by_time_sums[time])
@@ -499,12 +424,57 @@ def visualize_gauss(data_directory, curr_waves):
         plt.close()
 
 
+def visualize_single_gauss(data_directory, curr_waves, gaps):
+    res_integrate_by_time = calc_gauss_integral(data_directory, curr_waves, gaps)
+    res_integrate_by_time_T = np.transpose(res_integrate_by_time)
+    popt_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data(
+        data_directory, curr_waves, gaps)
 
+    colors = ['#3C9E3C', 'blue']
+
+    linestyles = 'solid'
+    if len(gaps) > 1:
+        line_name = ['Cr I', 'Cr I', 'Cr I', 'D gamma', 'D beta']
+    else:
+        line_name = ['N II']
+
+    for wave in range(len(exact_curr_waves)):
+        plt.figure(wave)
+        plt.title(line_name[wave] + ' peak')
+        for time in range(20):
+            print(np.shape(popt_by_time))
+            x_region_fit = np.linspace(min(x_regions_all[time][wave]), max(x_regions_all[time][wave]), 200)
+            plt.plot(x_regions_all[time][wave], y_regions_all[time][wave], color=colors[0], linestyle=linestyles, label=str(time))
+            plt.plot(x_region_fit,
+                     gauss(x_region_fit,
+                           popt_by_time[time][wave][0],
+                           popt_by_time[time][wave][1],
+                           popt_by_time[time][wave][2],
+                           popt_by_time[time][wave][3],
+                           exact_curr_waves[wave]),
+                     color=colors[1], linestyle=linestyles, label=f"{line_name[wave]} + {exact_curr_waves[wave]} nm")
+            plt.xlabel('Wavelenght, nm')
+            plt.ylabel('Intesity, a. u.')
+            plt.grid(True)
+            plt.legend()
+
+            out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\Graphs\fit_gauss_by_time\single_peak"
+
+            path = os.path.join(out_dir, f"integ_of_single_peak_{line_name[wave]}_{curr_waves[wave]}_shot_N{time}.png")
+
+            # out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\Graphs\fit_gauss_by_time\sum_CIII_OII"
+            #
+            # path = os.path.join(out_dir, f"integ_of_each_gauss_CIII_OII_by_time.png")
+            plt.savefig(path, dpi=300, bbox_inches="tight")
+            plt.close()
 
 def main():
-    data_directory = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\111225\p40 45.STR8'
-    visualize_single_gauss(data_directory=data_directory, curr_waves=[425.4331, 427.4806, 428.9733, 434.0625, 485.9375])
-    #visualize_gauss(data_directory=data_directory, curr_waves=[464.728, 464.916, 465.025, 465.147])
+    data_directory = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\111225\p40 66.STR8'
+    data_directory_blue = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\111225\p40 45.STR8'
+
+    visualize_single_gauss(data_directory=data_directory, curr_waves=[568.125], gaps=[1.0])
+    visualize_single_gauss(data_directory=data_directory_blue, curr_waves=[425.4331, 427.4806, 428.9733, 434.0625, 485.9375], gaps=[0.4, 0.4, 0.4, 0.4, 0.4])
+    #curr_waves=[425.4331, 427.4806, 428.9733, 434.0625, 485.9375]
 
 #425.4331, 427.455, 428.9733, 434.062, 434.71, 486.11
 main()
