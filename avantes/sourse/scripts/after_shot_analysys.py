@@ -93,6 +93,18 @@ def gauss_sum_of_CIII_OII(x, A1, A2, A3, A4, sigma_CIII, sigma_OII, A0, d_l_CIII
 # СIII - 464.28, OII - 464.916,* CIII - 465.025, 465.147,
 
 
+def gauss_sum_of_CII(x, A1, A2, sigma_CII, A0, d_l_CII):
+    res_gauss_sum_of_CII = (A1 * np.exp(-(x - 657.8 - d_l_CII) ** 2 / (2 * sigma_CII ** 2))) + (
+                    A2 * np.exp(-(x - 658.28 - d_l_CII) ** 2 / (2 * sigma_CII ** 2))) + A0
+    return res_gauss_sum_of_CII
+
+
+def gauss_sum_of_OII(x, A1, A2, sigma_OII, A0, d_l_OII):
+    res_gauss_sum_of_OII = (A1 * np.exp(-(x - 434.740 - d_l_OII) ** 2 / (2 * sigma_OII ** 2))) + (
+                    A2 * np.exp(-(x - 435.139 - d_l_OII) ** 2 / (2 * sigma_OII ** 2))) + A0
+    return res_gauss_sum_of_OII
+
+
 def integrate(A, sigma):
     return A * sigma * np.sqrt(np.pi * 2)
 
@@ -136,7 +148,58 @@ def approx_gauss_CIII_OII_sum_lmfit(x_region, y_region,
     params['d_l_OII'].set(value=d_l_OII_init, min=-0.1, max=0.1)
 
     result = model.fit(y_region, params, x=x_region)
-    print(result.params)
+
+    return result
+
+
+def approx_gauss_CII_group_lmfit(x_region, y_region,
+                                     A1_init, A2_init,
+                                     sigma_CII_init,
+                                     A0_init, d_l_CII_init):
+
+    model = Model(gauss_sum_of_CII, independent_vars=['x'])
+
+    params = model.make_params()
+
+    params.add('area_1', expr='A1*abs(sigma_CII)*sqrt(2*pi)')
+    params.add('area_2', expr='A2*abs(sigma_CII)*sqrt(2*pi)')
+
+    params['A1'].set(value=A1_init, min=-50, max=15000)
+    params['A2'].set(value=A2_init, min=-50, max=15000)
+
+    params['sigma_CII'].set(value=sigma_CII_init, min=0, max=2)
+
+    params['A0'].set(value=A0_init, min=0, max=100)
+
+    params['d_l_CII'].set(value=d_l_CII_init, min=-0.1, max=0.1)
+
+    result = model.fit(y_region, params, x=x_region)
+
+    return result
+
+
+def approx_gauss_OII_group_lmfit(x_region, y_region,
+                                 A1_init, A2_init,
+                                 sigma_OII_init,
+                                 A0_init, d_l_OII_init):
+    model = Model(gauss_sum_of_OII, independent_vars=['x'])
+
+    params = model.make_params()
+
+    params.add('area_1', expr='A1*abs(sigma_OII)*sqrt(2*pi)')
+    params.add('area_2', expr='A2*abs(sigma_OII)*sqrt(2*pi)')
+
+    params['A1'].set(value=A1_init, min=-50, max=15000)
+    params['A2'].set(value=A2_init, min=-50, max=15000)
+
+    params['sigma_OII'].set(value=sigma_OII_init, min=0, max=2)
+
+    params['A0'].set(value=A0_init, min=0, max=100)
+
+    params['d_l_OII'].set(value=d_l_OII_init, min=-0.1, max=0.1)
+
+    result = model.fit(y_region, params, x=x_region)
+
     return result
 
 
@@ -169,6 +232,7 @@ def save_data_to_json(data3d, area3d, exact_curr_waves):
 
 
     #одинарные пики отдельно стоящие
+
 def init_popt_data(data_directory, curr_waves, gaps):
     curr_intens, exact_curr_waves, waves, data = data_by_time(data_directory, curr_waves)
     popt_by_time = np.zeros((20, len(exact_curr_waves), 4))
@@ -236,24 +300,95 @@ def init_popt_data_sums_lmfit(data_directory, curr_waves):
     return popt_by_time, exact_curr_waves, x_regions_all, y_regions_all
 
 
+def init_popt_data_CII_group(data_directory, curr_waves, gaps):
+    curr_intens, exact_curr_waves, waves, data = data_by_time(data_directory, curr_waves)
+    popt_by_time = np.zeros((20, 2, 4))
+    integ_by_time = np.zeros((20, 2, 2))
+    x_regions_all = []
+    y_regions_all = []
 
-
-def calc_gauss_integral(data_directory, curr_waves, gaps):
-    popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data(data_directory, curr_waves, gaps)
-    #print(popt_by_time)
-    res_integrate_by_time = np.zeros((20, len(exact_curr_waves)))
 
     for time in range(20):
-        for wave in range(len(exact_curr_waves)):
-            #print(popt_by_time[time][wave][0], popt_by_time[time][wave][1], popt_by_time[time][wave][2], exact_curr_waves[wave], x_regions_all[time][wave])
-            res_integrate_by_time[time][wave] = integrate(A=popt_by_time[time][wave][0],
-                                                          sigma=popt_by_time[time][wave][1])
-            print('res_integrate_by_time[time][wave]')
-            print(res_integrate_by_time[time][wave])
+            x_regions_all.append([])
+            y_regions_all.append([])
+            peak_region_mask = (waves >= exact_curr_waves[0] - gaps[0]) & (waves <= exact_curr_waves[1] + gaps[1])
+            x_region = waves[peak_region_mask]
+            y_region = data[time][peak_region_mask]
+            A1, A2, sigma_CII, A0, d_l_CII = curr_intens[time][0], curr_intens[time][1], 0.1, 0, 0
 
-    print('res_integrate_by_time')
-    print(res_integrate_by_time)
-    return res_integrate_by_time
+            result = approx_gauss_CII_group_lmfit(x_region, y_region, A1, A2, sigma_CII, A0, d_l_CII)
+
+            p = result.params
+            popt_by_time[time][0] = [p['A1'].value, p['sigma_CII'].value,
+                                  p['A0'].value, p['d_l_CII'].value]
+            popt_by_time[time][1] = [p['A2'].value, p['sigma_CII'].value,
+                                  p['A0'].value, p['d_l_CII'].value]
+            integ_by_time[time][0] = [p['area_1'].value, p['area_1'].stderr]
+            integ_by_time[time][1] = [p['area_2'].value, p['area_2'].stderr]
+
+            x_regions_all[time].append(x_region)
+            y_regions_all[time].append(y_region)
+
+
+    save_data_to_json(popt_by_time, integ_by_time, exact_curr_waves)
+
+    return popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all
+
+
+
+def init_popt_data_OII_group(data_directory, curr_waves, gaps):
+    curr_intens, exact_curr_waves, waves, data = data_by_time(data_directory, curr_waves)
+    popt_by_time = np.zeros((20, 2, 4))
+    integ_by_time = np.zeros((20, 2, 2))
+    x_regions_all = []
+    y_regions_all = []
+
+
+    for time in range(20):
+            x_regions_all.append([])
+            y_regions_all.append([])
+            peak_region_mask = (waves >= exact_curr_waves[0] - gaps[0]) & (waves <= exact_curr_waves[1] + gaps[1])
+            x_region = waves[peak_region_mask]
+            y_region = data[time][peak_region_mask]
+            A1, A2, sigma_OII, A0, d_l_OII = curr_intens[time][0], curr_intens[time][1], 0.1, 0, 0
+
+            result = approx_gauss_OII_group_lmfit(x_region, y_region, A1, A2, sigma_OII, A0, d_l_OII)
+
+            p = result.params
+            popt_by_time[time][0] = [p['A1'].value, p['sigma_OII'].value,
+                                  p['A0'].value, p['d_l_OII'].value]
+            popt_by_time[time][1] = [p['A2'].value, p['sigma_OII'].value,
+                                  p['A0'].value, p['d_l_OII'].value]
+            integ_by_time[time][0] = [p['area_1'].value, p['area_1'].stderr]
+            integ_by_time[time][1] = [p['area_2'].value, p['area_2'].stderr]
+
+            x_regions_all[time].append(x_region)
+            y_regions_all[time].append(y_region)
+
+
+    save_data_to_json(popt_by_time, integ_by_time, exact_curr_waves)
+
+    return popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all
+
+
+# def calc_gauss_integral(data_directory, curr_waves, gaps):
+#     popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data(data_directory, curr_waves, gaps)
+#     #print(popt_by_time)
+#     res_integrate_by_time = np.zeros((20, len(exact_curr_waves)))
+#
+#     for time in range(20):
+#         for wave in range(len(exact_curr_waves)):
+#             #print(popt_by_time[time][wave][0], popt_by_time[time][wave][1], popt_by_time[time][wave][2], exact_curr_waves[wave], x_regions_all[time][wave])
+#             res_integrate_by_time[time][wave] = integrate(A=popt_by_time[time][wave][0],
+#                                                           sigma=popt_by_time[time][wave][1])
+#             print('res_integrate_by_time[time][wave]')
+#             print(res_integrate_by_time[time][wave])
+#
+#     print('res_integrate_by_time')
+#     print(res_integrate_by_time)
+#     return res_integrate_by_time
+
+
 
 def calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves):
     popt_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data_sums_lmfit(data_directory, curr_waves)
@@ -274,6 +409,107 @@ def calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves):
     print('res_integrate_by_time')
     print(res_integrate_by_time)
     return res_integrate_by_time
+
+def vis_integ_sum_of_CIII_OII_lmfit(data_directory, curr_waves):
+    res_integrate_by_time = calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves)
+
+    times = [i for i in range(20)]
+    sum_of_all = []
+    for time in range(20):
+        sum_of_all.append(sum(res_integrate_by_time[time][:4]))
+
+    plt.plot(times, sum_of_all, color='b')
+    plt.show()
+
+def vis_integ_sum_of_CII_group_lmfit(data_directory, curr_waves, gaps):
+    popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data_CII_group(data_directory, curr_waves, gaps)
+    print(exact_curr_waves)
+    times = [i for i in range(20)]
+    integ_by_time_T = np.swapaxes(integ_by_time, 0, 2)
+
+    line_name = ['C II', 'C II']
+
+    for wave in range(len(exact_curr_waves)):
+        plt.figure()
+        plt.title(line_name[wave] + ' peak')
+        y = integ_by_time_T[0][wave]
+        err = integ_by_time_T[1][wave]
+        print('for err ')
+        print(times, err)
+
+        plt.plot(times,
+                 y,
+                 color='b',
+                 linestyle='solid',
+                 label=f"{line_name[wave]} + {exact_curr_waves[wave]} nm")
+
+        max_y = np.max(y)
+        reasonable_max_err = max_y * 0.5
+        err = np.where(err > reasonable_max_err, 0, err)
+
+        plt.fill_between(times,
+                         y + err,
+                         y - err,
+                         color='blue', alpha=0.3)
+        for time in times:
+            if (err[time] <= 0) or (math.isnan(err[time])):
+                plt.scatter(time, y[time], color='red')
+            else:
+                plt.scatter(time, y[time], color='blue')
+
+
+
+        plt.xlabel('Frame, n')
+        plt.ylabel('Area, a. u.')
+        plt.grid(True)
+        plt.legend()
+        plt.show()
+
+
+def vis_integ_sum_of_OII_group_lmfit(data_directory, curr_waves, gaps):
+    popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data_OII_group(data_directory, curr_waves, gaps)
+    print(exact_curr_waves)
+    times = [i for i in range(20)]
+    integ_by_time_T = np.swapaxes(integ_by_time, 0, 2)
+
+    line_name = ['O II', 'O II']
+
+    for wave in range(len(exact_curr_waves)):
+        plt.figure()
+        plt.title(line_name[wave] + ' peak')
+        y = integ_by_time_T[0][wave]
+        err = integ_by_time_T[1][wave]
+        print('for err ')
+        print(times, err)
+
+        plt.plot(times,
+                 y,
+                 color='b',
+                 linestyle='solid',
+                 label=f"{line_name[wave]} + {exact_curr_waves[wave]} nm")
+
+        max_y = np.max(y)
+        reasonable_max_err = max_y * 0.5
+        err = np.where(err > reasonable_max_err, 0, err)
+
+        plt.fill_between(times,
+                         y + err,
+                         y - err,
+                         color='blue', alpha=0.3)
+        for time in times:
+            if (err[time] <= 0) or (math.isnan(err[time])):
+                plt.scatter(time, y[time], color='red')
+            else:
+                plt.scatter(time, y[time], color='blue')
+
+
+
+        plt.xlabel('Frame, n')
+        plt.ylabel('Area, a. u.')
+        plt.grid(True)
+        plt.legend()
+        plt.show()
+
 
 def visualize_integral_single_gauss(data_directory, curr_waves, gaps):
     res_integrate_by_time = calc_gauss_integral(data_directory, curr_waves, gaps)
@@ -460,10 +696,11 @@ def vis_integ_lmfit(integ_by_time, gaps, exact_curr_waves):
         plt.ylabel('Area, a. u.')
         plt.grid(True)
         plt.legend()
-        out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\Graphs\fit_gauss_by_time\single_peak"
-        path = os.path.join(out_dir, f"integ_of_single_peak_{line_name[wave]}_{exact_curr_waves[wave]}.png")
-        plt.savefig(path, dpi=300, bbox_inches="tight")
-        plt.close()
+        # out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\Graphs\fit_gauss_by_time\single_peak"
+        # path = os.path.join(out_dir, f"integ_of_single_peak_{line_name[wave]}_{exact_curr_waves[wave]}.png")
+        # plt.savefig(path, dpi=300, bbox_inches="tight")
+        # plt.close()
+        plt.show()
 
 
 def vis_single_gauss_lmfit(popt_by_time, gaps, exact_curr_waves, x_regions_all, y_regions_all):
@@ -497,22 +734,74 @@ def vis_single_gauss_lmfit(popt_by_time, gaps, exact_curr_waves, x_regions_all, 
             plt.grid(True)
             plt.legend()
 
-            out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\Graphs\fit_gauss_by_time\single_peak"
+            #out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\Graphs\fit_gauss_by_time\single_peak"
 
-            path = os.path.join(out_dir, f"gauss_of_single_peak_{line_name[wave]}_{exact_curr_waves[wave]}_shot_N{time}.png")
+            #path = os.path.join(out_dir, f"gauss_of_single_peak_{line_name[wave]}_{exact_curr_waves[wave]}_shot_N{time}.png")
 
             # out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\Graphs\fit_gauss_by_time\sum_CIII_OII"
             #
             # path = os.path.join(out_dir, f"integ_of_each_gauss_CIII_OII_by_time.png")
-            plt.savefig(path, dpi=300, bbox_inches="tight")
-            plt.close()
+            #plt.savefig(path, dpi=300, bbox_inches="tight")
+            plt.show()
+            #plt.close()
 
 
 def visualize(data_directory, curr_waves, gaps):
-    popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data(
-        data_directory, curr_waves, gaps)
 
-    vis_integ_lmfit(integ_by_time, gaps, exact_curr_waves)
+    group_waves = [
+        464.728,
+        464.916,
+        465.025,
+        465.147,
+    ]
+
+    group_CII = [
+        657.8,
+        658.28
+    ]
+
+    group_OII = [
+        434.740,
+        435.139
+    ]
+
+    #сомнительная логика выбора обрпботки
+    if 464.728 in curr_waves:
+        vis_integ_sum_of_CIII_OII_lmfit(
+            data_directory,
+            group_waves
+        )
+
+        curr_waves = [
+            wave
+            for wave in curr_waves
+            if wave not in group_waves
+        ]
+
+
+    if 657.8 in curr_waves:
+        vis_integ_sum_of_CII_group_lmfit(data_directory, curr_waves, gaps)
+
+        curr_waves = [
+            wave
+            for wave in curr_waves
+            if wave not in group_CII
+        ]
+
+    if 434.740 in curr_waves:
+        vis_integ_sum_of_OII_group_lmfit(ata_directory, curr_waves, gaps)
+
+        curr_waves = [
+            wave
+            for wave in curr_waves
+            if wave not in group_OII
+        ]
+
+    if curr_waves != []:
+        popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data(
+            data_directory, curr_waves, gaps)
+
+        vis_integ_lmfit(integ_by_time, gaps, exact_curr_waves)
     #vis_single_gauss_lmfit(popt_by_time, gaps, exact_curr_waves, x_regions_all, y_regions_all)
 
 
@@ -521,11 +810,11 @@ def main():
     data_directory = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\111225\p40 66.STR8'
     data_directory_blue = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\111225\p40 45.STR8'
 
-    visualize(data_directory=data_directory, curr_waves=[568.125], gaps=[1.0])
+    #visualize(data_directory=data_directory, curr_waves=[568.125], gaps=[1.0])
     visualize(data_directory=data_directory_blue,
             curr_waves=[425.4331, 427.4806, 428.9733, 434.0625, 485.9375],
             gaps=[0.4, 0.4, 0.4, 0.4, 0.4])
     #curr_waves=[425.4331, 427.4806, 428.9733, 434.0625, 485.9375]
 
 #425.4331, 427.455, 428.9733, 434.062, 434.71, 486.11
-main()
+#main()
