@@ -11,7 +11,8 @@ import json
 from lmfit import Model
 
 def init_data(data_directory):
-    times = 20
+    global times
+    times = 15
     pre_data = avaread.read_file(data_directory)
 
     low_signal_times = 3
@@ -33,7 +34,7 @@ def fill_bkgs(data, low_signal_times):
         bkgs.append(data.scope.T[i])
     bkgs = np.array(bkgs)
     bkgs = np.average(bkgs, 0)
-    bkgs = bkgs.reshape(1, 2048)
+    bkgs = bkgs.reshape(1, len(data.scope.T[1]))
     print(bkgs.shape)
     return bkgs
 
@@ -44,8 +45,9 @@ def waves_search(waves, curr_waves):
         diff = []
         for wave in waves:
             diff.append(abs(wave - c_wave))
-        exact_curr_waves = np.append(exact_curr_waves, waves[np.argmin(diff)])
 
+        exact_curr_waves = np.append(exact_curr_waves, waves[np.argmin(diff, axis=0)])
+    print('exact')
     print(exact_curr_waves)
     return exact_curr_waves
 
@@ -56,7 +58,7 @@ def data_by_time(data_directory, curr_waves):
     exact_curr_waves = waves_search(waves, curr_waves)
     data_wo_neg = data_negatives_to_zeros(data)
 
-    times = 20
+
 
     mask = np.isin(waves, exact_curr_waves)
 
@@ -203,31 +205,85 @@ def approx_gauss_OII_group_lmfit(x_region, y_region,
     return result
 
 
-def save_data_to_json(data3d, area3d, exact_curr_waves):
-    times = 20
+def nofitting_area_errors():
 
+    with open(path, 'r') as f:
+        json.
+    # прочитать из файла
+    # вычленить по нужным х нужные у
+    # посчитать ошибку площади для каждой линии по формуле
+    # сохранить в нужном порядке
+
+
+
+def save_nofitting_data_to_json(data3d, area3d, exact_curr_waves, data_directory):
+    print('save_nofitting_data_to_json!!!!!!!!!!!!!!!!!!')
+    file_name = data_directory[-11:-5]
     data = {}
-    for time in range(times):
-        for wave in range(len(exact_curr_waves)):
-            data_to_save = {
+    for wave in range(len(exact_curr_waves)):
+        A_array = []
+        sigma_array = []
+        A0_array = []
+        d_l_array = []
+        area_array = []
+        stderr_array = []
+
+        for time in range(times):
+            A_array.append(data3d[time][wave][0])
+            sigma_array.append(data3d[time][wave][1])
+            A0_array.append(data3d[time][wave][2])
+            d_l_array.append(data3d[time][wave][3])
+            area_array.append(area3d[time][wave][0])
+            stderr_array.append(area3d[time][wave][1])
+
+        data_to_save = {
                     'params': {
-                                'A': data3d[time][wave][0],
-                                'sigma': data3d[time][wave][1],
-                                'A0': data3d[time][wave][2],
-                                'd_l': data3d[time][wave][3]
+                                'A': A_array,
+                                'sigma': sigma_array,
+                                'A0': A0_array,
+                                'd_l': d_l_array
                     },
-                    'area_with_errors': { 'area' : area3d[time][wave][0],
-                                          'stderr' : area3d[time][wave][1]}
+                    'area_with_errors': { 'area' : area_array,
+                                          'stderr' : stderr_array}
 
-            }
-            data[str(exact_curr_waves[wave])] = data_to_save
+        }
 
-            out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\out_data"
-            path = os.path.join(out_dir, f"params_frame_N{time}_{exact_curr_waves}.json")
+        data[str(exact_curr_waves[wave])] = data_to_save
 
-            with open(path, 'w') as f:
-                json.dump(data, f, indent=4)
+    out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\out_data"
+    path = os.path.join(out_dir, f"params_full_frames_{exact_curr_waves}_{file_name}.json")
 
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=4)
+
+
+
+def save_nofitting_data_to_json(area3d, exact_curr_waves, data_directory):
+    print('save_nofitting_data_to_json !!!!!!!!!!!!')
+    file_name = data_directory[-11:-5]
+    print(file_name)
+    data = {}
+    for wave in range(len(exact_curr_waves)):
+        area_array = []
+        stderr_array = []
+        for time in range(times):
+            area_array.append(area3d[time][wave][0])
+            # stderr_array.append(area3d[time][wave][1])
+
+        data_to_save = {
+                    'area_with_errors': { 'area' : area_array,
+                                          'stderr' : 0}
+
+        }
+
+        data[str(exact_curr_waves[wave])] = data_to_save
+
+    out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\out_data"
+    path = os.path.join(out_dir, f"area_full_frames_{exact_curr_waves}_{file_name}.json")
+    print(data)
+
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=4)
 
 
 
@@ -235,13 +291,13 @@ def save_data_to_json(data3d, area3d, exact_curr_waves):
 
 def init_popt_data(data_directory, curr_waves, gaps):
     curr_intens, exact_curr_waves, waves, data = data_by_time(data_directory, curr_waves)
-    popt_by_time = np.zeros((20, len(exact_curr_waves), 4))
-    integ_by_time = np.zeros((20, len(exact_curr_waves), 2))
+    popt_by_time = np.zeros((times, len(exact_curr_waves), 4))
+    integ_by_time = np.zeros((times, len(exact_curr_waves), 2))
     x_regions_all = []
     y_regions_all = []
 
 
-    for time in range(20):
+    for time in range(times):
         x_regions_all.append([])
         y_regions_all.append([])
         for wave in range(len(exact_curr_waves)):
@@ -262,7 +318,7 @@ def init_popt_data(data_directory, curr_waves, gaps):
 
     # x_regions_all = np.array(x_regions_all)
     # y_regions_all = np.array(y_regions_all)
-    save_data_to_json(popt_by_time, integ_by_time, exact_curr_waves)
+    save_fitting_data_to_json(popt_by_time, integ_by_time, exact_curr_waves, data_directory)
 
     return popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all
 
@@ -390,6 +446,35 @@ def init_popt_data_OII_group(data_directory, curr_waves, gaps):
 
 
 
+def calc_peaks_area_wo_integ(data_directory, curr_waves, gaps):
+    curr_intens, exact_curr_waves, waves, data = data_by_time(data_directory, curr_waves)
+
+    peaks_area_wo_integ = np.zeros([times, len(exact_curr_waves), 1])
+    x_regions_all = []
+    y_regions_all = []
+
+    for time in range(times):
+        x_regions_all.append([])
+        y_regions_all.append([])
+        for wave in range(len(exact_curr_waves)):
+            peak_region_mask = (waves >= exact_curr_waves[wave] - gaps[wave]) & (waves <= exact_curr_waves[wave] + gaps[wave]) #сделать для каждой линии свое окно
+            x_region = waves[peak_region_mask]
+            y_region = data[time][peak_region_mask]
+            peak_area = 0
+            for x in range(1, len(x_region)-1):
+                peak_area += y_region[x] * 0.5 * (x_region[x+1] - x_region[x-1])
+
+            # peak_area += y_region[-1] * 0.5 * (x_region[-1])
+            # peak_area += y_region[0] * 0.5 * (x_region[0])
+
+            peaks_area_wo_integ[time][wave] = peak_area
+
+            x_regions_all[time].append(x_region)
+            y_regions_all[time].append(y_region)
+
+    return peaks_area_wo_integ
+
+
 def calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves):
     popt_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data_sums_lmfit(data_directory, curr_waves)
     res_integrate_by_time = np.zeros((20, 4))
@@ -409,6 +494,66 @@ def calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves):
     print('res_integrate_by_time')
     print(res_integrate_by_time)
     return res_integrate_by_time
+
+def vis_peaks_area_wo_integ(data_directory, curr_waves, gaps):
+    peaks_area_wo_integ = calc_peaks_area_wo_integ(data_directory, curr_waves, gaps)
+
+    save_nofitting_data_to_json(peaks_area_wo_integ, curr_waves, data_directory)
+
+    times_l = [i for i in range(times)]
+    peaks_area_wo_integ_T = np.swapaxes(peaks_area_wo_integ, 0, 2)
+
+    colors = ['#3C9E3C', 'blue']
+
+    linestyles = 'solid'
+
+    if len(gaps) > 1:
+        line_name = ['He I', 'He I', 'He I', 'He I']
+    else:
+        line_name = ['N II']
+
+    print(np.shape(peaks_area_wo_integ_T))
+
+    for wave in range(len(curr_waves)):
+        plt.figure()
+        plt.title(line_name[wave] + ' peak')
+        y = peaks_area_wo_integ_T[0][wave]
+        err = [100 for i in y]
+        print('for err ')
+        print(times_l, err)
+
+        plt.plot(times_l,
+                 y,
+                 color=colors[1],
+                 linestyle=linestyles,
+                 label=f"{line_name[wave]} + {curr_waves[wave]} nm")
+
+        max_y = np.max(y)
+        reasonable_max_err = max_y * 0.5
+        err = np.where(err > reasonable_max_err, 0, err)
+
+        plt.fill_between(times_l,
+                         y + err,
+                         y - err,
+                         color='blue', alpha=0.3)
+        for time in times_l:
+            if (err[time] <= 0) or (math.isnan(err[time])):
+                plt.scatter(time, y[time], color='red')
+            else:
+                plt.scatter(time, y[time], color='blue')
+
+
+
+        plt.xlabel('Frame, n')
+        plt.ylabel('Area, a. u.')
+        plt.grid(True)
+        plt.legend()
+
+        # out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\Graphs\fit_gauss_by_time\single_peak"
+        # path = os.path.join(out_dir, f"integ_of_single_peak_{line_name[wave]}_{exact_curr_waves[wave]}.png")
+        # plt.savefig(path, dpi=300, bbox_inches="tight")
+
+        plt.show()
 
 def vis_integ_sum_of_CIII_OII_lmfit(data_directory, curr_waves):
     res_integrate_by_time = calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves)
@@ -646,9 +791,8 @@ def visualize_gauss(data_directory, curr_waves):
         plt.close()
 
 
-
 def vis_integ_lmfit(integ_by_time, gaps, exact_curr_waves):
-    times = [i for i in range(20)]
+    times_l = [i for i in range(times)]
     integ_by_time_T = np.swapaxes(integ_by_time, 0, 2)
 
     colors = ['#3C9E3C', 'blue']
@@ -656,7 +800,8 @@ def vis_integ_lmfit(integ_by_time, gaps, exact_curr_waves):
     linestyles = 'solid'
 
     if len(gaps) > 1:
-        line_name = ['Cr I', 'Cr I', 'Cr I', 'D gamma', 'D beta']
+        line_name = ['He I', 'He I', 'He I', 'He I']
+        # line_name = ['Cr I', 'Cr I', 'Cr I', 'D gamma', 'D beta']
     else:
         line_name = ['N II']
 
@@ -670,7 +815,7 @@ def vis_integ_lmfit(integ_by_time, gaps, exact_curr_waves):
         print('for err ')
         print(times, err)
 
-        plt.plot(times,
+        plt.plot(times_l,
                  y,
                  color=colors[1],
                  linestyle=linestyles,
@@ -684,7 +829,7 @@ def vis_integ_lmfit(integ_by_time, gaps, exact_curr_waves):
                          y + err,
                          y - err,
                          color='blue', alpha=0.3)
-        for time in times:
+        for time in times_l:
             if (err[time] <= 0) or (math.isnan(err[time])):
                 plt.scatter(time, y[time], color='red')
             else:
@@ -696,10 +841,11 @@ def vis_integ_lmfit(integ_by_time, gaps, exact_curr_waves):
         plt.ylabel('Area, a. u.')
         plt.grid(True)
         plt.legend()
+
         # out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\Graphs\fit_gauss_by_time\single_peak"
         # path = os.path.join(out_dir, f"integ_of_single_peak_{line_name[wave]}_{exact_curr_waves[wave]}.png")
         # plt.savefig(path, dpi=300, bbox_inches="tight")
-        # plt.close()
+
         plt.show()
 
 
@@ -802,19 +948,22 @@ def visualize(data_directory, curr_waves, gaps):
             data_directory, curr_waves, gaps)
 
         vis_integ_lmfit(integ_by_time, gaps, exact_curr_waves)
-    #vis_single_gauss_lmfit(popt_by_time, gaps, exact_curr_waves, x_regions_all, y_regions_all)
-
+        #vis_single_gauss_lmfit(popt_by_time, gaps, exact_curr_waves, x_regions_all, y_regions_all)
 
 
 def main():
-    data_directory = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\111225\p40 66.STR8'
+    data_directory = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\260416\p00 34.STR8'
     data_directory_blue = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\111225\p40 45.STR8'
 
-    #visualize(data_directory=data_directory, curr_waves=[568.125], gaps=[1.0])
-    visualize(data_directory=data_directory_blue,
-            curr_waves=[425.4331, 427.4806, 428.9733, 434.0625, 485.9375],
-            gaps=[0.4, 0.4, 0.4, 0.4, 0.4])
+
+    # visualize(data_directory=data_directory,
+    #         curr_waves=[587.5247, 667.7794, 706.5, 728.0699],
+    #         gaps=[0.4, 0.4, 0.4, 0.4])
     #curr_waves=[425.4331, 427.4806, 428.9733, 434.0625, 485.9375]
 
+    vis_peaks_area_wo_integ(data_directory=data_directory,
+                            curr_waves=[587.5247, 667.7794, 706.5, 728.0699],
+                            gaps=[0.4, 0.4, 0.4, 0.4])
+
 #425.4331, 427.455, 428.9733, 434.062, 434.71, 486.11
-#main()
+main()
