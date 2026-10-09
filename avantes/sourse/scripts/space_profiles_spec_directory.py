@@ -13,7 +13,7 @@ from after_shot_analysys import calc_peaks_area_wo_integ
 
 
 
-def init_data_by_impact_param(data_directory_folder, curr_waves, gaps):
+def init_data_by_impact_param(data_directory_folder, curr_waves, gaps, file_name):
 
     impact_param = np.array([79.97, 69.90, 59.80, 49.71, 39.64, 29.61, 19.65, 9.78, 0., -9.65, -19.17, -28.54
                              , -37.75, -46.78, -55.62, -64.27, -72.72])
@@ -35,7 +35,7 @@ def init_data_by_impact_param(data_directory_folder, curr_waves, gaps):
                 idx = np.argmax(concat_imp_par_lil_rad[1] == int(file[1:3]))
                 print('+idx', idx, int('-'+file[1:3]))
                 x_impact_param.append(concat_imp_par_lil_rad[0][idx])
-            peaks_area_wo_integ = calc_peaks_area_wo_integ(str(data_directory_folder) + file, curr_waves, gaps)
+            peaks_area_wo_integ = calc_peaks_area_wo_integ(str(data_directory_folder) + file, curr_waves, gaps, file_name)
             profiles_to_plot.append(peaks_area_wo_integ)
 
 
@@ -43,6 +43,7 @@ def init_data_by_impact_param(data_directory_folder, curr_waves, gaps):
     profiles_to_plot_T = np.transpose(profiles_to_plot)
     reshaped_profiles_to_plot = []
     reshaped_profiles_to_plot_T = profiles_to_plot_T[0]
+    reshaped_errors_to_plot_T = profiles_to_plot_T[1]
 
     order, x_impact_param = sort_impact_par(x_impact_param)
 
@@ -51,6 +52,7 @@ def init_data_by_impact_param(data_directory_folder, curr_waves, gaps):
         sort_resh_profiles_to_plot_T.append([])
         for h in range(len(reshaped_profiles_to_plot_T[i])):
             sort_resh_profiles_to_plot_T[i].append(reshaped_profiles_to_plot_T[i][h][order])
+            sort_resh_profiles_to_plot_T[i].append(reshaped_errors_to_plot_T[i][h][order])
 
     sort_resh_profiles_to_plot_T = np.array(sort_resh_profiles_to_plot_T)
 
@@ -71,18 +73,21 @@ def sort_impact_par(x_impact_param):
 
 
 
-def save_data_to_json_imp(sort_resh_profiles_to_plot_T, x_impact_param, data_directory_folder, waves, gaps):
+def save_data_to_json_imp(sort_resh_profiles_to_plot_T, x_impact_param, data_directory_folder, waves, gaps, file_name):
 
     file_name = data_directory_folder[-8:-2]
     print(file_name)
     data = {}
     for wave in range(len(waves)):
         profiles_array = []
-        for time in range(len(sort_resh_profiles_to_plot_T[0])):
-            profiles_array.append(sort_resh_profiles_to_plot_T[wave][time].tolist())
+        errors_array = []
+        for time in range(0, len(sort_resh_profiles_to_plot_T[0]), 2):
+            profiles_array.append(sort_resh_profiles_to_plot_T[wave][time][0].tolist())
+            errors_array.append(sort_resh_profiles_to_plot_T[wave][time+1][0].tolist())
         print(profiles_array)
         data_to_save = {
                     'area_with_errors': { 'area' : profiles_array,
+                                          'errors' : errors_array,
                                           'impact_param' : x_impact_param,
                                           'gap' : gaps[wave]}
 
@@ -99,11 +104,11 @@ def save_data_to_json_imp(sort_resh_profiles_to_plot_T, x_impact_param, data_dir
 
 
 
-def init_plots_curr_line(data_directory_folder, waves, gaps):
+def init_plots_curr_line(data_directory_folder, waves, gaps, file_name):
 
-    sort_resh_profiles_to_plot_T, x_impact_param = init_data_by_impact_param(data_directory_folder, waves, gaps)
+    sort_resh_profiles_to_plot_T, x_impact_param = init_data_by_impact_param(data_directory_folder, waves, gaps, file_name)
 
-    save_data_to_json_imp(sort_resh_profiles_to_plot_T, x_impact_param, data_directory_folder, waves, gaps)
+    save_data_to_json_imp(sort_resh_profiles_to_plot_T, x_impact_param, data_directory_folder, waves, gaps, file_name)
 
     wave_name = 'He I'
 
@@ -142,14 +147,15 @@ def init_plots_curr_line(data_directory_folder, waves, gaps):
         'dashed',   # 14
         'dotted'    # 15
     ]
+    print(np.shape(sort_resh_profiles_to_plot_T))
 
-    x_time = [i * 4 for i in range(len(sort_resh_profiles_to_plot_T[0]))]
+    x_time = [i * 4 for i in range(len(sort_resh_profiles_to_plot_T[0])//2)]
 
     for j in range(len(sort_resh_profiles_to_plot_T)):
         plt.figure()
         plt.title('Линия ' + wave_name + ' ' + str(waves[j]) + ' nm')
-        for i in range(len(sort_resh_profiles_to_plot_T[j])):
-            plt.plot(x_impact_param, sort_resh_profiles_to_plot_T[j][i], color=colors[i], linestyle=linestyles[i], label=str(x_time[i]+2))
+        for i in range(0, len(sort_resh_profiles_to_plot_T[j]), 2):
+            plt.plot(x_impact_param, sort_resh_profiles_to_plot_T[j][i], color=colors[i//2], linestyle=linestyles[i//2], label=str(x_time[i//2]+2))
 
         plt.xlabel('r, mm')
         plt.ylabel('Intesity, a. u.')
@@ -164,8 +170,9 @@ def main():
     data_directory_folder = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\260416\\'
     waves = [587.5247, 667.7794, 706.5, 728.0699]
     gaps = [0.4, 0.4, 0.4, 0.4]
+    file_name = 'errors_red_Noise red absolute.json'
 
-    init_plots_curr_line(data_directory_folder, waves, gaps)
+    init_plots_curr_line(data_directory_folder, waves, gaps, file_name)
 
 
 main()

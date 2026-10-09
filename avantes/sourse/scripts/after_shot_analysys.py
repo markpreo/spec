@@ -205,18 +205,25 @@ def approx_gauss_OII_group_lmfit(x_region, y_region,
     return result
 
 
-def nofitting_area_errors():
+def nofitting_read_file(file_name):
+    input_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\out_data"
 
-    with open(path, 'r') as f:
-        json.
-    # прочитать из файла
-    # вычленить по нужным х нужные у
+    path = os.path.join(input_dir, file_name)
+    print(path)
+
+    with open(path, "r") as file:
+        data = json.load(file)
+
+    return data
+
+
+   # вычленить по нужным х нужные у
     # посчитать ошибку площади для каждой линии по формуле
     # сохранить в нужном порядке
 
 
 
-def save_nofitting_data_to_json(data3d, area3d, exact_curr_waves, data_directory):
+def save_fitting_data_to_json(data3d, area3d, exact_curr_waves, data_directory):
     print('save_nofitting_data_to_json!!!!!!!!!!!!!!!!!!')
     file_name = data_directory[-11:-5]
     data = {}
@@ -268,11 +275,11 @@ def save_nofitting_data_to_json(area3d, exact_curr_waves, data_directory):
         stderr_array = []
         for time in range(times):
             area_array.append(area3d[time][wave][0])
-            # stderr_array.append(area3d[time][wave][1])
+            stderr_array.append(area3d[time][wave][1])
 
         data_to_save = {
                     'area_with_errors': { 'area' : area_array,
-                                          'stderr' : 0}
+                                          'stderr' : stderr_array}
 
         }
 
@@ -446,12 +453,15 @@ def init_popt_data_OII_group(data_directory, curr_waves, gaps):
 
 
 
-def calc_peaks_area_wo_integ(data_directory, curr_waves, gaps):
+def calc_peaks_area_wo_integ(data_directory, curr_waves, gaps, file_name):
     curr_intens, exact_curr_waves, waves, data = data_by_time(data_directory, curr_waves)
+    std = nofitting_read_file(file_name)
+    std = np.array(std)
 
-    peaks_area_wo_integ = np.zeros([times, len(exact_curr_waves), 1])
+    peaks_area_wo_integ = np.zeros([times, len(exact_curr_waves), 2])
     x_regions_all = []
     y_regions_all = []
+    print(np.shape(std))
 
     for time in range(times):
         x_regions_all.append([])
@@ -460,14 +470,15 @@ def calc_peaks_area_wo_integ(data_directory, curr_waves, gaps):
             peak_region_mask = (waves >= exact_curr_waves[wave] - gaps[wave]) & (waves <= exact_curr_waves[wave] + gaps[wave]) #сделать для каждой линии свое окно
             x_region = waves[peak_region_mask]
             y_region = data[time][peak_region_mask]
+            std_region = std[peak_region_mask]
             peak_area = 0
+            peak_error = 0
             for x in range(1, len(x_region)-1):
                 peak_area += y_region[x] * 0.5 * (x_region[x+1] - x_region[x-1])
+                peak_error += (std_region[x] * 0.5 * (x_region[x + 1] - x_region[x - 1])) ** 2
 
-            # peak_area += y_region[-1] * 0.5 * (x_region[-1])
-            # peak_area += y_region[0] * 0.5 * (x_region[0])
 
-            peaks_area_wo_integ[time][wave] = peak_area
+            peaks_area_wo_integ[time][wave] = peak_area, np.sqrt(peak_error)
 
             x_regions_all[time].append(x_region)
             y_regions_all[time].append(y_region)
@@ -495,8 +506,8 @@ def calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves):
     print(res_integrate_by_time)
     return res_integrate_by_time
 
-def vis_peaks_area_wo_integ(data_directory, curr_waves, gaps):
-    peaks_area_wo_integ = calc_peaks_area_wo_integ(data_directory, curr_waves, gaps)
+def vis_peaks_area_wo_integ(data_directory, curr_waves, gaps, file_name):
+    peaks_area_wo_integ = calc_peaks_area_wo_integ(data_directory, curr_waves, gaps, file_name)
 
     save_nofitting_data_to_json(peaks_area_wo_integ, curr_waves, data_directory)
 
@@ -518,7 +529,7 @@ def vis_peaks_area_wo_integ(data_directory, curr_waves, gaps):
         plt.figure()
         plt.title(line_name[wave] + ' peak')
         y = peaks_area_wo_integ_T[0][wave]
-        err = [100 for i in y]
+        err = peaks_area_wo_integ_T[1][wave]
         print('for err ')
         print(times_l, err)
 
@@ -963,7 +974,8 @@ def main():
 
     vis_peaks_area_wo_integ(data_directory=data_directory,
                             curr_waves=[587.5247, 667.7794, 706.5, 728.0699],
-                            gaps=[0.4, 0.4, 0.4, 0.4])
+                            gaps=[0.4, 0.4, 0.4, 0.4],
+                            file_name='errors_red_Noise red absolute.json')
 
 #425.4331, 427.455, 428.9733, 434.062, 434.71, 486.11
-main()
+#main()
