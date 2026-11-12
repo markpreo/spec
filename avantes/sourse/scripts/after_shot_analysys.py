@@ -136,6 +136,17 @@ def approx_gauss_CIII_OII_sum_lmfit(x_region, y_region,
     model = Model(gauss_sum_of_CIII_OII, independent_vars=['x'])
 
     params = model.make_params()
+
+    # ---- площади четырёх линий (expr по аналогии с CII/OII group) ----
+    # линия 1: C III 464.728 -> sigma_CIII
+    # линия 2: O II  464.916 -> sigma_OII   (по gauss_sum_of_CIII_OII)
+    # линия 3: C III 465.025 -> sigma_CIII
+    # линия 4: C III 465.147 -> sigma_CIII
+    params.add('area_1', expr='A1*abs(sigma_CIII)*sqrt(2*pi)')
+    params.add('area_2', expr='A2*abs(sigma_OII)*sqrt(2*pi)')
+    params.add('area_3', expr='A3*abs(sigma_CIII)*sqrt(2*pi)')
+    params.add('area_4', expr='A4*abs(sigma_CIII)*sqrt(2*pi)')
+
     params['A1'].set(value=A1_init, min=-50, max=15000)
     params['A2'].set(value=A2_init, min=-50, max=15000)
     params['A3'].set(value=A3_init, min=-50, max=15000)
@@ -224,7 +235,8 @@ def nofitting_read_file(file_name):
 
 
 def save_fitting_data_to_json(data3d, area3d, exact_curr_waves, data_directory):
-    print('save_nofitting_data_to_json!!!!!!!!!!!!!!!!!!')
+    print('save_fitting_data_to_json!!!!!!!!!!!!!!!!!!')
+    print(exact_curr_waves)
     file_name = data_directory[-11:-5]
     data = {}
     for wave in range(len(exact_curr_waves)):
@@ -333,10 +345,11 @@ def init_popt_data(data_directory, curr_waves, gaps):
 def init_popt_data_sums_lmfit(data_directory, curr_waves):
     curr_intens, exact_curr_waves, waves, data = data_by_time(data_directory, curr_waves)
     popt_by_time = np.zeros((20, 9))
+    integ_by_time = np.zeros((20, 4, 2))
     x_regions_all = []
     y_regions_all = []
 
-    for time in range(20):
+    for time in range(15):
         x_regions_all.append([])
         y_regions_all.append([])
         peak_region_mask = (waves >= exact_curr_waves[0] - 0.4 ) & (waves <= exact_curr_waves[3] + 0.4)
@@ -357,13 +370,21 @@ def init_popt_data_sums_lmfit(data_directory, curr_waves):
                                 p['A0'].value,
                                 p['d_l_CIII'].value, p['d_l_OII'].value]
 
+        integ_by_time[time][0] = [p['area_1'].value, p['area_1'].stderr]
+        integ_by_time[time][1] = [p['area_2'].value, p['area_2'].stderr]
+        integ_by_time[time][2] = [p['area_3'].value, p['area_3'].stderr]
+        integ_by_time[time][3] = [p['area_4'].value, p['area_4'].stderr]
+
         x_regions_all[time].append(x_region)
         y_regions_all[time].append(y_region)
 
-    return popt_by_time, exact_curr_waves, x_regions_all, y_regions_all
+    save_fitting_data_CIII_OII_to_json(popt_by_time, integ_by_time, exact_curr_waves, data_directory)
+
+    return popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all
 
 
 def init_popt_data_CII_group(data_directory, curr_waves, gaps):
+    curr_waves = [657.8, 658.28]
     curr_intens, exact_curr_waves, waves, data = data_by_time(data_directory, curr_waves)
     popt_by_time = np.zeros((20, 2, 4))
     integ_by_time = np.zeros((20, 2, 2))
@@ -371,7 +392,7 @@ def init_popt_data_CII_group(data_directory, curr_waves, gaps):
     y_regions_all = []
 
 
-    for time in range(20):
+    for time in range(15):
             x_regions_all.append([])
             y_regions_all.append([])
             peak_region_mask = (waves >= exact_curr_waves[0] - gaps[0]) & (waves <= exact_curr_waves[1] + gaps[1])
@@ -393,7 +414,7 @@ def init_popt_data_CII_group(data_directory, curr_waves, gaps):
             y_regions_all[time].append(y_region)
 
 
-    save_data_to_json(popt_by_time, integ_by_time, exact_curr_waves)
+    save_fitting_data_to_json(popt_by_time, integ_by_time, curr_waves, data_directory)
 
     return popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all
 
@@ -407,7 +428,7 @@ def init_popt_data_OII_group(data_directory, curr_waves, gaps):
     y_regions_all = []
 
 
-    for time in range(20):
+    for time in range(15):
             x_regions_all.append([])
             y_regions_all.append([])
             peak_region_mask = (waves >= exact_curr_waves[0] - gaps[0]) & (waves <= exact_curr_waves[1] + gaps[1])
@@ -429,7 +450,7 @@ def init_popt_data_OII_group(data_directory, curr_waves, gaps):
             y_regions_all[time].append(y_region)
 
 
-    save_data_to_json(popt_by_time, integ_by_time, exact_curr_waves)
+    save_fitting_data_to_json(popt_by_time, integ_by_time, exact_curr_waves, data_directory)
 
     return popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all
 
@@ -486,25 +507,31 @@ def calc_peaks_area_wo_integ(data_directory, curr_waves, gaps, file_name):
     return peaks_area_wo_integ
 
 
+# def calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves):
+#     popt_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data_sums_lmfit(data_directory, curr_waves)
+#     res_integrate_by_time = np.zeros((20, 4))
+#
+#     for time in range(20):
+#             res_integrate_by_time[time][0] = integrate(A=popt_by_time[time][0],
+#                                                           sigma=popt_by_time[time][4])
+#             res_integrate_by_time[time][1] = integrate(A=popt_by_time[time][1],
+#                                                        sigma=popt_by_time[time][5])
+#             res_integrate_by_time[time][2] = integrate(A=popt_by_time[time][2],
+#                                                        sigma=popt_by_time[time][4])
+#             res_integrate_by_time[time][3] = integrate(A=popt_by_time[time][3],
+#                                                        sigma=popt_by_time[time][4])
+#
+#             print(res_integrate_by_time[time])
+#
+#     print('res_integrate_by_time')
+#     print(res_integrate_by_time)
+#     return res_integrate_by_time
+
 def calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves):
-    popt_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data_sums_lmfit(data_directory, curr_waves)
-    res_integrate_by_time = np.zeros((20, 4))
+    popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all = \
+        init_popt_data_sums_lmfit(data_directory, curr_waves)
+    return integ_by_time
 
-    for time in range(20):
-            res_integrate_by_time[time][0] = integrate(A=popt_by_time[time][0],
-                                                          sigma=popt_by_time[time][4])
-            res_integrate_by_time[time][1] = integrate(A=popt_by_time[time][1],
-                                                       sigma=popt_by_time[time][5])
-            res_integrate_by_time[time][2] = integrate(A=popt_by_time[time][2],
-                                                       sigma=popt_by_time[time][4])
-            res_integrate_by_time[time][3] = integrate(A=popt_by_time[time][3],
-                                                       sigma=popt_by_time[time][4])
-
-            print(res_integrate_by_time[time])
-
-    print('res_integrate_by_time')
-    print(res_integrate_by_time)
-    return res_integrate_by_time
 
 def vis_peaks_area_wo_integ(data_directory, curr_waves, gaps, file_name):
     peaks_area_wo_integ = calc_peaks_area_wo_integ(data_directory, curr_waves, gaps, file_name)
@@ -519,7 +546,7 @@ def vis_peaks_area_wo_integ(data_directory, curr_waves, gaps, file_name):
     linestyles = 'solid'
 
     if len(gaps) > 1:
-        line_name = ['He I', 'He I', 'He I', 'He I']
+        line_name = ['Cr I', 'Cr I', 'Cr I', 'D_gamma', 'D_beta']
     else:
         line_name = ['N II']
 
@@ -567,15 +594,98 @@ def vis_peaks_area_wo_integ(data_directory, curr_waves, gaps, file_name):
         plt.show()
 
 def vis_integ_sum_of_CIII_OII_lmfit(data_directory, curr_waves):
-    res_integrate_by_time = calc_gauss_sum_of_CIII_OII_integral(data_directory, curr_waves)
+    popt_by_time, integ_by_time, exact_curr_waves, _, _ = \
+        init_popt_data_sums_lmfit(data_directory, curr_waves)
 
     times = [i for i in range(20)]
-    sum_of_all = []
-    for time in range(20):
-        sum_of_all.append(sum(res_integrate_by_time[time][:4]))
+    integ_by_time_T = np.swapaxes(integ_by_time, 0, 2)   # (2, 4, 20)
 
-    plt.plot(times, sum_of_all, color='b')
-    plt.show()
+    line_name = ['C III', 'O II', 'C III', 'C III']
+
+    for wave in range(len(exact_curr_waves)):
+        plt.figure()
+        plt.title(line_name[wave] + ' peak')
+        y = integ_by_time_T[0][wave]
+        err = integ_by_time_T[1][wave]
+
+        plt.plot(times, y, color='b', linestyle='solid',
+                 label=f"{line_name[wave]} + {exact_curr_waves[wave]} nm")
+
+        max_y = np.max(y)
+        err = np.where(err > max_y * 0.5, 0, err)
+
+        plt.fill_between(times, y + err, y - err, color='blue', alpha=0.3)
+        for time in times:
+            if (err[time] <= 0) or (math.isnan(err[time])):
+                plt.scatter(time, y[time], color='red')
+            else:
+                plt.scatter(time, y[time], color='blue')
+
+        plt.xlabel('Frame, n')
+        plt.ylabel('Area, a. u.')
+        plt.grid(True)
+        plt.legend()
+        plt.show()
+
+
+def save_fitting_data_CIII_OII_to_json(popt_by_time, integ_by_time,
+                                       exact_curr_waves, data_directory):
+    print('save_fitting_data_CIII_OII_to_json')
+    print(exact_curr_waves)
+
+    file_name = data_directory[-11:-5]
+    data = {}
+
+    # индексы в popt[t] (9 параметров)
+    A_IDX     = [0, 1, 2, 3]
+    SIGMA_IDX = [4, 5, 4, 4]   # 0->CIII, 1->OII, 2->CIII, 3->CIII
+    A0_IDX    = 6              # A0 общий для всех 4 линий
+    DL_IDX    = [7, 8, 7, 7]   # 0->CIII, 1->OII, 2->CIII, 3->CIII
+
+    for wave in range(len(exact_curr_waves)):
+        A_array = []
+        sigma_array = []
+        A0_array = []
+        d_l_array = []
+        area_array = []
+        stderr_array = []
+
+        for time in range(times):           # times — глобальная (=15) из init_data
+            p = popt_by_time[time]
+
+            A_array.append(p[A_IDX[wave]])
+            sigma_array.append(p[SIGMA_IDX[wave]])
+            A0_array.append(p[A0_IDX])
+            d_l_array.append(p[DL_IDX[wave]])
+
+            area_array.append(integ_by_time[time][wave][0])
+            stderr_array.append(integ_by_time[time][wave][1])
+
+        data_to_save = {
+            'params': {
+                'A': A_array,
+                'sigma': sigma_array,
+                'A0': A0_array,
+                'd_l': d_l_array
+            },
+            'area_with_errors': {
+                'area': area_array,
+                'stderr': stderr_array
+            }
+        }
+
+        data[str(exact_curr_waves[wave])] = data_to_save
+
+    out_dir = r"C:\Users\elena\Documents\GitHub\spec\avantes\out_data"
+    path = os.path.join(out_dir,
+                        f"params_full_frames_{exact_curr_waves}_{file_name}.json")
+
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=4)
+    print(f'[saved] {path}')
+
+
+
 
 def vis_integ_sum_of_CII_group_lmfit(data_directory, curr_waves, gaps):
     popt_by_time, integ_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data_CII_group(data_directory, curr_waves, gaps)
@@ -658,8 +768,6 @@ def vis_integ_sum_of_OII_group_lmfit(data_directory, curr_waves, gaps):
             else:
                 plt.scatter(time, y[time], color='blue')
 
-
-
         plt.xlabel('Frame, n')
         plt.ylabel('Area, a. u.')
         plt.grid(True)
@@ -706,7 +814,8 @@ def visualize_integral_single_gauss(data_directory, curr_waves, gaps):
 
 def visualize_gauss(data_directory, curr_waves):
     #popt_by_time, exact_curr_waves, x_regions_all, y_regions_all = init_popt_data(data_directory, curr_waves)
-    popt_by_time_sums, exact_curr_waves_sums, x_regions_all_sums, y_regions_all_sums = init_popt_data_sums_lmfit(data_directory, curr_waves)
+    popt_by_time_sums, integ_by_time_sums, exact_curr_waves_sums, x_regions_all_sums, y_regions_all_sums = \
+        init_popt_data_sums_lmfit(data_directory, curr_waves)
 
     colors = '#3C9E3C'
 
@@ -811,8 +920,9 @@ def vis_integ_lmfit(integ_by_time, gaps, exact_curr_waves):
     linestyles = 'solid'
 
     if len(gaps) > 1:
-        line_name = ['He I', 'He I', 'He I', 'He I']
-        # line_name = ['Cr I', 'Cr I', 'Cr I', 'D gamma', 'D beta']
+        #line_name = ['He I', 'He I', 'He I', 'He I']
+        #line_name = ['Cr I', 'Cr I', 'Cr I', 'D gamma', 'D beta']
+        line_name = ['N II', 'D alpha']
     else:
         line_name = ['N II']
 
@@ -918,7 +1028,7 @@ def visualize(data_directory, curr_waves, gaps):
     ]
 
     group_OII = [
-        434.740,
+        434.74,
         435.139
     ]
 
@@ -937,7 +1047,7 @@ def visualize(data_directory, curr_waves, gaps):
 
 
     if 657.8 in curr_waves:
-        vis_integ_sum_of_CII_group_lmfit(data_directory, curr_waves, gaps)
+        vis_integ_sum_of_CII_group_lmfit(data_directory, group_CII, [0.4, 0.4])
 
         curr_waves = [
             wave
@@ -945,8 +1055,8 @@ def visualize(data_directory, curr_waves, gaps):
             if wave not in group_CII
         ]
 
-    if 434.740 in curr_waves:
-        vis_integ_sum_of_OII_group_lmfit(ata_directory, curr_waves, gaps)
+    if 434.74 in curr_waves:
+        vis_integ_sum_of_OII_group_lmfit(data_directory, group_OII, [0.4, 0.4])
 
         curr_waves = [
             wave
@@ -963,19 +1073,19 @@ def visualize(data_directory, curr_waves, gaps):
 
 
 def main():
-    data_directory = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\260416\p00 34.STR8'
-    data_directory_blue = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\111225\p40 45.STR8'
+    data_directory = r'C:\Users\elena\PycharmProjects\PythonProject\.venv\FTI_work\avantes\data\261020\p00 46.STR8'
+    data_directory_blue = r'd'
 
-
-    # visualize(data_directory=data_directory,
-    #         curr_waves=[587.5247, 667.7794, 706.5, 728.0699],
-    #         gaps=[0.4, 0.4, 0.4, 0.4])
+    # починить чтобы каждая визуализация группы внутри имела свои нанометры нужный линий - иначе они строят от всех и ломаются
+    visualize(data_directory=data_directory,
+           curr_waves=[434.74, 435.139, 464.728, 464.916, 465.025, 465.147],
+           gaps=[0.4, 0.4])
     #curr_waves=[425.4331, 427.4806, 428.9733, 434.0625, 485.9375]
 
-    vis_peaks_area_wo_integ(data_directory=data_directory,
-                            curr_waves=[587.5247, 667.7794, 706.5, 728.0699],
-                            gaps=[0.4, 0.4, 0.4, 0.4],
-                            file_name='errors_red_Noise red absolute.json')
+    # vis_peaks_area_wo_integ(data_directory=data_directory,
+    #                         curr_waves=[425.4331, 427.4806, 428.9733, 434.0625, 485.9375],
+    #                         gaps=[0.4, 0.4, 0.4, 0.4, 0.4],
+    #                         file_name='errors_red_Noise red absolute.json')
 
 #425.4331, 427.455, 428.9733, 434.062, 434.71, 486.11
 #main()
